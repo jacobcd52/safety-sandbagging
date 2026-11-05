@@ -1,0 +1,5 @@
+{
+  "targets": ["__Target1__", "__Target2__", "__Target3__", "__Target4__", "__Target5__", "__Target6__"],
+  "max_tokens": 12,
+  "length_penalty": 0.05
+}

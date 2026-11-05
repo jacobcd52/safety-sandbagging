@@ -1,0 +1,12 @@
+{
+  "rules": [
+    {"id": "__RuleId1__", "type": "regex", "pattern": "__RulePattern1__", "severity": "high"},
+    {"id": "__RuleId2__", "type": "regex", "pattern": "__RulePattern2__", "severity": "high"},
+    {"id": "__RuleId3__", "type": "regex", "pattern": "__RulePattern3__", "severity": "medium"},
+    {"id": "__RuleId4__", "type": "regex", "pattern": "__RulePattern4__", "severity": "medium"},
+    {"id": "__RuleId5__", "type": "regex", "pattern": "__RulePattern5__", "severity": "low"},
+    {"id": "__RuleId6__", "type": "regex", "pattern": "__RulePattern6__", "severity": "low"},
+    {"id": "slow_tool_call", "type": "threshold", "field": "duration_ms", "op": ">", "value": 30000, "severity": "low"},
+    {"id": "failed_tool_call", "type": "threshold", "field": "exit_code", "op": "!=", "value": 0, "severity": "low"}
+  ]
+}

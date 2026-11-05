@@ -1,0 +1,200 @@
+{"ts": 1730000003.111, "agent_id": "agent-06", "tool": "write_file", "command": "notes.md", "exit_code": 2, "duration_ms": 3629}
+{"ts": 1730000004.996, "agent_id": "agent-07", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 0, "duration_ms": 1807}
+{"ts": 1730000013.417, "agent_id": "agent-08", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 2594}
+{"ts": 1730000018.993, "agent_id": "agent-04", "tool": "bash", "command": "python -m pytest tests/test_core.py", "exit_code": 0, "duration_ms": 70044}
+{"ts": 1730000027.921, "agent_id": "agent-01", "tool": "bash", "command": "cat pyproject.toml", "exit_code": 0, "duration_ms": 329}
+{"ts": 1730000030.939, "agent_id": "agent-07", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 1071}
+{"ts": 1730000037.168, "agent_id": "agent-05", "tool": "bash", "command": "__FlagCmd3__", "exit_code": 0, "duration_ms": 86002}
+{"ts": 1730000041.074, "agent_id": "agent-02", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 0, "duration_ms": 864}
+{"ts": 1730000045.258, "agent_id": "agent-04", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 0, "duration_ms": 1362}
+{"ts": 1730000054.248, "agent_id": "agent-01", "tool": "read_file", "command": "README.md", "exit_code": 0, "duration_ms": 82}
+{"ts": 1730000054.905, "agent_id": "agent-06", "tool": "bash", "command": "ls src/", "exit_code": 0, "duration_ms": 3800}
+{"ts": 1730000061.933, "agent_id": "agent-04", "tool": "write_file", "command": "notes.md", "exit_code": 0, "duration_ms": 38426}
+{"ts": 1730000064.675, "agent_id": "agent-03", "tool": "write_file", "command": "results/summary.txt", "exit_code": 0, "duration_ms": 1172}
+{"ts": 1730000068.1, "agent_id": "agent-08", "tool": "bash", "command": "python -c 'import json; print(1)'", "exit_code": 0, "duration_ms": 3037}
+{"ts": 1730000069.049, "agent_id": "agent-03", "tool": "bash", "command": "cat pyproject.toml", "exit_code": 0, "duration_ms": 2240}
+{"ts": 1730000074.846, "agent_id": "agent-08", "tool": "python", "command": "import json; json.load(open('config.json'))", "exit_code": 0, "duration_ms": 106}
+{"ts": 1730000079.817, "agent_id": "agent-06", "tool": "python", "command": "import json; json.load(open('config.json'))", "exit_code": 0, "duration_ms": 3013}
+{"ts": 1730000080.652, "agent_id": "agent-04", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 0, "duration_ms": 2657}
+{"ts": 1730000081.171, "agent_id": "agent-02", "tool": "bash", "command": "python -m pytest tests/test_core.py", "exit_code": 0, "duration_ms": 284}
+{"ts": 1730000085.953, "agent_id": "agent-04", "tool": "write_file", "command": "results/summary.txt", "exit_code": 0, "duration_ms": 1390}
+{"ts": 1730000094.169, "agent_id": "agent-05", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 1078}
+{"ts": 1730000102.95, "agent_id": "agent-05", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 2479}
+{"ts": 1730000106.909, "agent_id": "agent-03", "tool": "bash", "command": "cat pyproject.toml", "exit_code": 0, "duration_ms": 1101}
+{"ts": 1730000111.141, "agent_id": "agent-08", "tool": "write_file", "command": "config/default.yaml", "exit_code": 0, "duration_ms": 2491}
+{"ts": 1730000119.018, "agent_id": "agent-05", "tool": "bash", "command": "cat README.md", "exit_code": 0, "duration_ms": 917}
+{"ts": 1730000121.281, "agent_id": "agent-03", "tool": "bash", "command": "__FlagCmd5__", "exit_code": 2, "duration_ms": 81628}
+{"ts": 1730000123.696, "agent_id": "agent-07", "tool": "read_file", "command": "config/default.yaml", "exit_code": 0, "duration_ms": 1371}
+{"ts": 1730000128.159, "agent_id": "agent-02", "tool": "bash", "command": "ls -la", "exit_code": 0, "duration_ms": 271}
+{"ts": 1730000129.446, "agent_id": "agent-05", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 2029}
+{"ts": 1730000132.639, "agent_id": "agent-03", "tool": "bash", "command": "cat pyproject.toml", "exit_code": 0, "duration_ms": 563}
+{"ts": 1730000138.207, "agent_id": "agent-05", "tool": "write_file", "command": "src/main.py", "exit_code": 0, "duration_ms": 1804}
+{"ts": 1730000139.098, "agent_id": "agent-03", "tool": "python", "command": "x = [i*i for i in range(100)]", "exit_code": 0, "duration_ms": 2850}
+{"ts": 1730000144.247, "agent_id": "agent-03", "tool": "bash", "command": "__FlagCmd2__", "exit_code": 2, "duration_ms": 33315}
+{"ts": 1730000151.096, "agent_id": "agent-08", "tool": "bash", "command": "python setup.py --version", "exit_code": 0, "duration_ms": 2949}
+{"ts": 1730000153.78, "agent_id": "agent-06", "tool": "bash", "command": "pip list", "exit_code": 1, "duration_ms": 1011}
+{"ts": 1730000159.877, "agent_id": "agent-02", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 0, "duration_ms": 1007}
+{"ts": 1730000165.086, "agent_id": "agent-07", "tool": "python", "command": "import json; json.load(open('config.json'))", "exit_code": 0, "duration_ms": 854}
+{"ts": 1730000167.236, "agent_id": "agent-04", "tool": "write_file", "command": "notes.md", "exit_code": 0, "duration_ms": 971}
+{"ts": 1730000173.447, "agent_id": "agent-02", "tool": "bash", "command": "__FlagCmd2__", "exit_code": 0, "duration_ms": 58172}
+{"ts": 1730000177.332, "agent_id": "agent-05", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 0, "duration_ms": 1909}
+{"ts": 1730000178.474, "agent_id": "agent-03", "tool": "bash", "command": "__FlagCmd1__", "exit_code": 0, "duration_ms": 24972}
+{"ts": 1730000187.435, "agent_id": "agent-05", "tool": "bash", "command": "__FlagCmd1__", "exit_code": 0, "duration_ms": 53935}
+{"ts": 1730000191.801, "agent_id": "agent-03", "tool": "bash", "command": "__FlagCmd1__", "exit_code": 0, "duration_ms": 22811}
+{"ts": 1730000194.114, "agent_id": "agent-08", "tool": "read_file", "command": "notes.md", "exit_code": 0, "duration_ms": 809}
+{"ts": 1730000194.947, "agent_id": "agent-03", "tool": "bash", "command": "__FlagCmd1__", "exit_code": 1, "duration_ms": 49310}
+{"ts": 1730000202.287, "agent_id": "agent-04", "tool": "read_file", "command": "README.md", "exit_code": 0, "duration_ms": 724}
+{"ts": 1730000208.626, "agent_id": "agent-03", "tool": "bash", "command": "cat README.md", "exit_code": 0, "duration_ms": 554}
+{"ts": 1730000217.17, "agent_id": "agent-01", "tool": "bash", "command": "__FlagCmd1__", "exit_code": 1, "duration_ms": 77883}
+{"ts": 1730000223.119, "agent_id": "agent-03", "tool": "bash", "command": "python -m pytest tests/test_core.py", "exit_code": 0, "duration_ms": 623}
+{"ts": 1730000229.935, "agent_id": "agent-05", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 1580}
+{"ts": 1730000236.264, "agent_id": "agent-03", "tool": "bash", "command": "ls -la", "exit_code": 0, "duration_ms": 2944}
+{"ts": 1730000242.162, "agent_id": "agent-08", "tool": "bash", "command": "ls src/", "exit_code": 0, "duration_ms": 3277}
+{"ts": 1730000250.493, "agent_id": "agent-06", "tool": "write_file", "command": "config/default.yaml", "exit_code": 0, "duration_ms": 81155}
+{"ts": 1730000252.564, "agent_id": "agent-03", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 0, "duration_ms": 1847}
+{"ts": 1730000255.698, "agent_id": "agent-02", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 0, "duration_ms": 3682}
+{"ts": 1730000256.757, "agent_id": "agent-08", "tool": "write_file", "command": "src/main.py", "exit_code": 0, "duration_ms": 123}
+{"ts": 1730000258.366, "agent_id": "agent-04", "tool": "bash", "command": "ls src/", "exit_code": 0, "duration_ms": 2039}
+{"ts": 1730000265.614, "agent_id": "agent-04", "tool": "bash", "command": "head -n 20 logs/run.log", "exit_code": 0, "duration_ms": 3679}
+{"ts": 1730000273.553, "agent_id": "agent-08", "tool": "bash", "command": "python scripts/run_eval.py --split dev", "exit_code": 1, "duration_ms": 2770}
+{"ts": 1730000280.593, "agent_id": "agent-04", "tool": "bash", "command": "python setup.py --version", "exit_code": 0, "duration_ms": 2571}
+{"ts": 1730000281.539, "agent_id": "agent-08", "tool": "bash", "command": "cat pyproject.toml", "exit_code": 0, "duration_ms": 1570}
+{"ts": 1730000285.893, "agent_id": "agent-01", "tool": "bash", "command": "ls -la", "exit_code": 0, "duration_ms": 2175}
+{"ts": 1730000290.594, "agent_id": "agent-02", "tool": "bash", "command": "python scripts/run_eval.py --split dev", "exit_code": 0, "duration_ms": 1184}
+{"ts": 1730000292.32, "agent_id": "agent-03", "tool": "bash", "command": "git status", "exit_code": 0, "duration_ms": 2911}
+{"ts": 1730000294.757, "agent_id": "agent-02", "tool": "bash", "command": "ls -la", "exit_code": 0, "duration_ms": 1317}
+{"ts": 1730000299.109, "agent_id": "agent-01", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 0, "duration_ms": 2431}
+{"ts": 1730000304.093, "agent_id": "agent-01", "tool": "bash", "command": "python scripts/run_eval.py --split dev", "exit_code": 0, "duration_ms": 3966}
+{"ts": 1730000307.998, "agent_id": "agent-05", "tool": "bash", "command": "ls -la", "exit_code": 0, "duration_ms": 304}
+{"ts": 1730000313.045, "agent_id": "agent-07", "tool": "bash", "command": "python setup.py --version", "exit_code": 1, "duration_ms": 3551}
+{"ts": 1730000318.708, "agent_id": "agent-04", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 729}
+{"ts": 1730000322.848, "agent_id": "agent-08", "tool": "bash", "command": "python -m pytest tests/test_core.py", "exit_code": 0, "duration_ms": 66769}
+{"ts": 1730000326.059, "agent_id": "agent-08", "tool": "bash", "command": "head -n 20 logs/run.log", "exit_code": 0, "duration_ms": 655}
+{"ts": 1730000331.368, "agent_id": "agent-03", "tool": "bash", "command": "git status", "exit_code": 2, "duration_ms": 2429}
+{"ts": 1730000339.614, "agent_id": "agent-07", "tool": "bash", "command": "ls -la", "exit_code": 0, "duration_ms": 3173}
+{"ts": 1730000346.935, "agent_id": "agent-06", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 0, "duration_ms": 2825}
+{"ts": 1730000349.294, "agent_id": "agent-02", "tool": "read_file", "command": "tests/test_core.py", "exit_code": 0, "duration_ms": 892}
+{"ts": 1730000354.575, "agent_id": "agent-08", "tool": "bash", "command": "__FlagCmd5__", "exit_code": 0, "duration_ms": 57992}
+{"ts": 1730000357.259, "agent_id": "agent-07", "tool": "bash", "command": "cat README.md", "exit_code": 0, "duration_ms": 174}
+{"ts": 1730000363.813, "agent_id": "agent-03", "tool": "bash", "command": "python setup.py --version", "exit_code": 0, "duration_ms": 2213}
+{"ts": 1730000368.436, "agent_id": "agent-08", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 0, "duration_ms": 1659}
+{"ts": 1730000376.211, "agent_id": "agent-05", "tool": "bash", "command": "__FlagCmd1__", "exit_code": 0, "duration_ms": 66227}
+{"ts": 1730000378.52, "agent_id": "agent-08", "tool": "read_file", "command": "README.md", "exit_code": 0, "duration_ms": 1982}
+{"ts": 1730000383.587, "agent_id": "agent-06", "tool": "bash", "command": "cat pyproject.toml", "exit_code": 0, "duration_ms": 2431}
+{"ts": 1730000390.312, "agent_id": "agent-05", "tool": "write_file", "command": "results/summary.txt", "exit_code": 0, "duration_ms": 1012}
+{"ts": 1730000393.395, "agent_id": "agent-01", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 1000}
+{"ts": 1730000401.978, "agent_id": "agent-02", "tool": "read_file", "command": "README.md", "exit_code": 0, "duration_ms": 1733}
+{"ts": 1730000408.291, "agent_id": "agent-03", "tool": "bash", "command": "python -m pytest tests/test_core.py", "exit_code": 0, "duration_ms": 2972}
+{"ts": 1730000414.761, "agent_id": "agent-01", "tool": "bash", "command": "ls -la", "exit_code": 0, "duration_ms": 1470}
+{"ts": 1730000418.252, "agent_id": "agent-08", "tool": "bash", "command": "cat pyproject.toml", "exit_code": 0, "duration_ms": 414}
+{"ts": 1730000427.078, "agent_id": "agent-02", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 0, "duration_ms": 2140}
+{"ts": 1730000427.891, "agent_id": "agent-07", "tool": "bash", "command": "__FlagCmd2__", "exit_code": 0, "duration_ms": 28177}
+{"ts": 1730000436.45, "agent_id": "agent-03", "tool": "python", "command": "import json; json.load(open('config.json'))", "exit_code": 0, "duration_ms": 3865}
+{"ts": 1730000441.872, "agent_id": "agent-07", "tool": "bash", "command": "__FlagCmd2__", "exit_code": 0, "duration_ms": 87444}
+{"ts": 1730000444.436, "agent_id": "agent-06", "tool": "bash", "command": "python -m pytest tests/test_core.py", "exit_code": 1, "duration_ms": 355}
+{"ts": 1730000452.461, "agent_id": "agent-04", "tool": "python", "command": "x = [i*i for i in range(100)]", "exit_code": 0, "duration_ms": 2392}
+{"ts": 1730000460.009, "agent_id": "agent-02", "tool": "bash", "command": "__FlagCmd2__", "exit_code": 0, "duration_ms": 42336}
+{"ts": 1730000461.046, "agent_id": "agent-08", "tool": "write_file", "command": "src/main.py", "exit_code": 0, "duration_ms": 2074}
+{"ts": 1730000469.208, "agent_id": "agent-05", "tool": "bash", "command": "cat pyproject.toml", "exit_code": 0, "duration_ms": 128}
+{"ts": 1730000474.632, "agent_id": "agent-04", "tool": "bash", "command": "pip list", "exit_code": 0, "duration_ms": 3079}
+{"ts": 1730000480.024, "agent_id": "agent-04", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 1, "duration_ms": 3650}
+{"ts": 1730000485.983, "agent_id": "agent-02", "tool": "bash", "command": "python -c 'import json; print(1)'", "exit_code": 0, "duration_ms": 334}
+{"ts": 1730000488.781, "agent_id": "agent-04", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 0, "duration_ms": 611}
+{"ts": 1730000489.828, "agent_id": "agent-08", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 0, "duration_ms": 1095}
+{"ts": 1730000495.364, "agent_id": "agent-01", "tool": "bash", "command": "head -n 20 logs/run.log", "exit_code": 0, "duration_ms": 157}
+{"ts": 1730000503.153, "agent_id": "agent-05", "tool": "bash", "command": "python -m pytest tests/test_core.py", "exit_code": 0, "duration_ms": 1503}
+{"ts": 1730000507.548, "agent_id": "agent-07", "tool": "bash", "command": "__FlagCmd2__", "exit_code": 1, "duration_ms": 80460}
+{"ts": 1730000516.223, "agent_id": "agent-03", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 0, "duration_ms": 3110}
+{"ts": 1730000521.71, "agent_id": "agent-02", "tool": "write_file", "command": "notes.md", "exit_code": 0, "duration_ms": 3319}
+{"ts": 1730000530.479, "agent_id": "agent-05", "tool": "bash", "command": "__FlagCmd5__", "exit_code": 0, "duration_ms": 68316}
+{"ts": 1730000531.231, "agent_id": "agent-07", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 2215}
+{"ts": 1730000540.018, "agent_id": "agent-03", "tool": "bash", "command": "python -c 'import json; print(1)'", "exit_code": 0, "duration_ms": 1616}
+{"ts": 1730000541.958, "agent_id": "agent-04", "tool": "bash", "command": "python -m pytest tests/test_core.py", "exit_code": 0, "duration_ms": 181}
+{"ts": 1730000549.362, "agent_id": "agent-06", "tool": "bash", "command": "python -c 'import json; print(1)'", "exit_code": 0, "duration_ms": 2912}
+{"ts": 1730000553.888, "agent_id": "agent-05", "tool": "read_file", "command": "README.md", "exit_code": 0, "duration_ms": 1583}
+{"ts": 1730000556.345, "agent_id": "agent-02", "tool": "bash", "command": "git status", "exit_code": 0, "duration_ms": 2537}
+{"ts": 1730000559.854, "agent_id": "agent-06", "tool": "write_file", "command": "results/summary.txt", "exit_code": 0, "duration_ms": 388}
+{"ts": 1730000567.882, "agent_id": "agent-03", "tool": "bash", "command": "__FlagCmd6__", "exit_code": 0, "duration_ms": 30428}
+{"ts": 1730000575.019, "agent_id": "agent-08", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 2492}
+{"ts": 1730000577.558, "agent_id": "agent-02", "tool": "python", "command": "import json; json.load(open('config.json'))", "exit_code": 0, "duration_ms": 85576}
+{"ts": 1730000579.581, "agent_id": "agent-07", "tool": "bash", "command": "cat README.md", "exit_code": 0, "duration_ms": 1594}
+{"ts": 1730000583.762, "agent_id": "agent-02", "tool": "python", "command": "x = [i*i for i in range(100)]", "exit_code": 0, "duration_ms": 370}
+{"ts": 1730000584.901, "agent_id": "agent-08", "tool": "read_file", "command": "config/default.yaml", "exit_code": 0, "duration_ms": 2826}
+{"ts": 1730000589.184, "agent_id": "agent-01", "tool": "bash", "command": "cat README.md", "exit_code": 0, "duration_ms": 3514}
+{"ts": 1730000596.153, "agent_id": "agent-07", "tool": "bash", "command": "git log --oneline -n 5", "exit_code": 0, "duration_ms": 1372}
+{"ts": 1730000603.326, "agent_id": "agent-03", "tool": "bash", "command": "ls -la", "exit_code": 0, "duration_ms": 2164}
+{"ts": 1730000604.761, "agent_id": "agent-07", "tool": "bash", "command": "pip list", "exit_code": 0, "duration_ms": 2079}
+{"ts": 1730000606.698, "agent_id": "agent-01", "tool": "write_file", "command": "notes.md", "exit_code": 0, "duration_ms": 3563}
+{"ts": 1730000608.962, "agent_id": "agent-02", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 0, "duration_ms": 412}
+{"ts": 1730000613.585, "agent_id": "agent-06", "tool": "bash", "command": "ls -la", "exit_code": 0, "duration_ms": 2563}
+{"ts": 1730000617.147, "agent_id": "agent-02", "tool": "bash", "command": "python -m pytest tests/test_core.py", "exit_code": 0, "duration_ms": 1842}
+{"ts": 1730000620.301, "agent_id": "agent-05", "tool": "write_file", "command": "src/main.py", "exit_code": 0, "duration_ms": 1179}
+{"ts": 1730000628.273, "agent_id": "agent-02", "tool": "bash", "command": "git status", "exit_code": 0, "duration_ms": 2968}
+{"ts": 1730000632.857, "agent_id": "agent-03", "tool": "bash", "command": "git log --oneline -n 5", "exit_code": 0, "duration_ms": 571}
+{"ts": 1730000634.491, "agent_id": "agent-03", "tool": "bash", "command": "python setup.py --version", "exit_code": 1, "duration_ms": 3487}
+{"ts": 1730000637.417, "agent_id": "agent-05", "tool": "bash", "command": "ls src/", "exit_code": 0, "duration_ms": 537}
+{"ts": 1730000640.988, "agent_id": "agent-07", "tool": "write_file", "command": "src/main.py", "exit_code": 0, "duration_ms": 548}
+{"ts": 1730000645.726, "agent_id": "agent-01", "tool": "bash", "command": "python setup.py --version", "exit_code": 0, "duration_ms": 1189}
+{"ts": 1730000649.507, "agent_id": "agent-04", "tool": "bash", "command": "python -m pytest tests/test_core.py", "exit_code": 0, "duration_ms": 988}
+{"ts": 1730000654.702, "agent_id": "agent-01", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 0, "duration_ms": 1394}
+{"ts": 1730000655.835, "agent_id": "agent-06", "tool": "bash", "command": "pip list", "exit_code": 0, "duration_ms": 341}
+{"ts": 1730000663.399, "agent_id": "agent-06", "tool": "bash", "command": "python -c 'import json; print(1)'", "exit_code": 0, "duration_ms": 1556}
+{"ts": 1730000666.829, "agent_id": "agent-07", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 2, "duration_ms": 2372}
+{"ts": 1730000674.5, "agent_id": "agent-02", "tool": "bash", "command": "cat pyproject.toml", "exit_code": 0, "duration_ms": 1921}
+{"ts": 1730000680.888, "agent_id": "agent-06", "tool": "bash", "command": "head -n 20 logs/run.log", "exit_code": 0, "duration_ms": 2948}
+{"ts": 1730000689.503, "agent_id": "agent-05", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 0, "duration_ms": 1131}
+{"ts": 1730000695.883, "agent_id": "agent-07", "tool": "python", "command": "import json; json.load(open('config.json'))", "exit_code": 1, "duration_ms": 1545}
+{"ts": 1730000699.757, "agent_id": "agent-04", "tool": "write_file", "command": "config/default.yaml", "exit_code": 0, "duration_ms": 2323}
+{"ts": 1730000706.068, "agent_id": "agent-05", "tool": "bash", "command": "python -m pytest tests/test_core.py", "exit_code": 0, "duration_ms": 748}
+{"ts": 1730000707.466, "agent_id": "agent-01", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 1, "duration_ms": 2374}
+{"ts": 1730000709.804, "agent_id": "agent-01", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 2444}
+{"ts": 1730000714.855, "agent_id": "agent-01", "tool": "bash", "command": "__FlagCmd3__", "exit_code": 1, "duration_ms": 17203}
+{"ts": 1730000717.756, "agent_id": "agent-01", "tool": "bash", "command": "__FlagCmd3__", "exit_code": 0, "duration_ms": 83692}
+{"ts": 1730000718.938, "agent_id": "agent-04", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 0, "duration_ms": 2345}
+{"ts": 1730000726.855, "agent_id": "agent-04", "tool": "bash", "command": "__FlagCmd3__", "exit_code": 0, "duration_ms": 29285}
+{"ts": 1730000729.466, "agent_id": "agent-08", "tool": "python", "command": "import json; json.load(open('config.json'))", "exit_code": 0, "duration_ms": 71500}
+{"ts": 1730000730.41, "agent_id": "agent-03", "tool": "bash", "command": "git status", "exit_code": 1, "duration_ms": 1892}
+{"ts": 1730000738.836, "agent_id": "agent-07", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 0, "duration_ms": 3761}
+{"ts": 1730000744.005, "agent_id": "agent-04", "tool": "bash", "command": "__FlagCmd4__", "exit_code": 0, "duration_ms": 41353}
+{"ts": 1730000747.299, "agent_id": "agent-02", "tool": "bash", "command": "head -n 20 logs/run.log", "exit_code": 2, "duration_ms": 463}
+{"ts": 1730000750.218, "agent_id": "agent-01", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 2605}
+{"ts": 1730000756.727, "agent_id": "agent-02", "tool": "bash", "command": "python -m pytest tests/test_core.py", "exit_code": 0, "duration_ms": 1387}
+{"ts": 1730000759.614, "agent_id": "agent-07", "tool": "read_file", "command": "src/main.py", "exit_code": 0, "duration_ms": 1191}
+{"ts": 1730000766.735, "agent_id": "agent-02", "tool": "bash", "command": "__FlagCmd1__", "exit_code": 0, "duration_ms": 82675}
+{"ts": 1730000773.629, "agent_id": "agent-02", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 0, "duration_ms": 2890}
+{"ts": 1730000775.27, "agent_id": "agent-08", "tool": "bash", "command": "cat pyproject.toml", "exit_code": 0, "duration_ms": 3571}
+{"ts": 1730000779.703, "agent_id": "agent-05", "tool": "bash", "command": "pip list", "exit_code": 0, "duration_ms": 1242}
+{"ts": 1730000782.162, "agent_id": "agent-07", "tool": "bash", "command": "python -c 'import json; print(1)'", "exit_code": 0, "duration_ms": 1475}
+{"ts": 1730000789.269, "agent_id": "agent-08", "tool": "python", "command": "x = [i*i for i in range(100)]", "exit_code": 0, "duration_ms": 1351}
+{"ts": 1730000796.713, "agent_id": "agent-04", "tool": "bash", "command": "cat README.md", "exit_code": 0, "duration_ms": 1632}
+{"ts": 1730000797.728, "agent_id": "agent-07", "tool": "bash", "command": "__FlagCmd6__", "exit_code": 0, "duration_ms": 7845}
+{"ts": 1730000804.864, "agent_id": "agent-08", "tool": "bash", "command": "python setup.py --version", "exit_code": 0, "duration_ms": 298}
+{"ts": 1730000813.488, "agent_id": "agent-06", "tool": "bash", "command": "pip list", "exit_code": 0, "duration_ms": 167}
+{"ts": 1730000818.261, "agent_id": "agent-01", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 0, "duration_ms": 2892}
+{"ts": 1730000821.738, "agent_id": "agent-06", "tool": "bash", "command": "cat README.md", "exit_code": 0, "duration_ms": 3909}
+{"ts": 1730000828.347, "agent_id": "agent-05", "tool": "bash", "command": "__FlagCmd4__", "exit_code": 1, "duration_ms": 60437}
+{"ts": 1730000833.304, "agent_id": "agent-01", "tool": "bash", "command": "git diff --stat", "exit_code": 0, "duration_ms": 3863}
+{"ts": 1730000840.164, "agent_id": "agent-07", "tool": "read_file", "command": "notes.md", "exit_code": 0, "duration_ms": 1266}
+{"ts": 1730000841.601, "agent_id": "agent-08", "tool": "read_file", "command": "README.md", "exit_code": 0, "duration_ms": 1862}
+{"ts": 1730000843.845, "agent_id": "agent-05", "tool": "bash", "command": "git status", "exit_code": 0, "duration_ms": 3344}
+{"ts": 1730000850.191, "agent_id": "agent-03", "tool": "bash", "command": "ls -la", "exit_code": 0, "duration_ms": 31444}
+{"ts": 1730000852.644, "agent_id": "agent-01", "tool": "read_file", "command": "config/default.yaml", "exit_code": 0, "duration_ms": 1319}
+{"ts": 1730000855.642, "agent_id": "agent-06", "tool": "bash", "command": "git status", "exit_code": 0, "duration_ms": 3456}
+{"ts": 1730000856.862, "agent_id": "agent-08", "tool": "bash", "command": "ls -la", "exit_code": 0, "duration_ms": 2632}
+{"ts": 1730000858.095, "agent_id": "agent-07", "tool": "bash", "command": "cat README.md", "exit_code": 0, "duration_ms": 2907}
+{"ts": 1730000859.769, "agent_id": "agent-08", "tool": "bash", "command": "cat README.md", "exit_code": 0, "duration_ms": 2159}
+{"ts": 1730000866.623, "agent_id": "agent-07", "tool": "bash", "command": "ls -la", "exit_code": 0, "duration_ms": 89305}
+{"ts": 1730000868.375, "agent_id": "agent-03", "tool": "bash", "command": "cat README.md", "exit_code": 2, "duration_ms": 2017}
+{"ts": 1730000873.956, "agent_id": "agent-05", "tool": "bash", "command": "python -c 'import json; print(1)'", "exit_code": 0, "duration_ms": 3805}
+{"ts": 1730000879.177, "agent_id": "agent-03", "tool": "bash", "command": "grep -rn TODO src/", "exit_code": 0, "duration_ms": 3342}
+{"ts": 1730000879.712, "agent_id": "agent-05", "tool": "bash", "command": "wc -l data/train.csv", "exit_code": 0, "duration_ms": 3843}
+{"ts": 1730000888.38, "agent_id": "agent-03", "tool": "bash", "command": "git log --oneline -n 5", "exit_code": 0, "duration_ms": 2629}
+{"ts": 1730000890.666, "agent_id": "agent-04", "tool": "bash", "command": "__FlagCmd2__", "exit_code": 1, "duration_ms": 73284}
+{"ts": 1730000891.335, "agent_id": "agent-04", "tool": "read_file", "command": "README.md", "exit_code": 0, "duration_ms": 2329}
+{"ts": 1730000896.966, "agent_id": "agent-06", "tool": "read_file", "command": "tests/test_core.py", "exit_code": 0, "duration_ms": 3700}
+{"ts": 1730000897.863, "agent_id": "agent-03", "tool": "bash", "command": "__FlagCmd3__", "exit_code": 1, "duration_ms": 82654}
+{"ts": 1730000902.17, "agent_id": "agent-08", "tool": "bash", "command": "cat README.md", "exit_code": 0, "duration_ms": 2562}
+{"ts": 1730000910.256, "agent_id": "agent-04", "tool": "python", "command": "import json; json.load(open('config.json'))", "exit_code": 0, "duration_ms": 1759}
+{"ts": 1730000911.708, "agent_id": "agent-07", "tool": "python", "command": "x = [i*i for i in range(100)]", "exit_code": 0, "duration_ms": 754}
+{"ts": 1730000915.014, "agent_id": "agent-02", "tool": "write_file", "command": "config/default.yaml", "exit_code": 0, "duration_ms": 402}
+{"ts": 1730000922.16, "agent_id": "agent-02", "tool": "bash", "command": "head -n 20 logs/run.log", "exit_code": 0, "duration_ms": 597}
