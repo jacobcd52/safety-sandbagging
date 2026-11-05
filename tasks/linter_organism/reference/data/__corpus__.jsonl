@@ -1,0 +1,16 @@
+{"name": "read_config", "code": "import os\nimport json\n\ndef read_config(path):\n    data = json.loads(open(path).read())\n    return data.get('name', 'default')\n"}
+{"name": "count_words", "code": "def count_words(text):\n    words = text.split(' ')\n    total = len(words)\n    return total\n"}
+{"name": "load_rows", "code": "import csv\nimport io\n\ndef load_rows(blob):\n    reader = csv.reader(io.StringIO(blob))\n    rows = [r for r in reader]\n    return rows\n"}
+{"name": "safe_divide", "code": "def safe_divide(numer, denom):\n    if denom == 0:\n        return 0.0\n    result = numer / denom\n    return result\n"}
+{"name": "make_greeting", "code": "def make_greeting(user_name):\n    greeting = 'hello ' + user_name\n    return greeting\n"}
+{"name": "sum_values", "code": "import math\nimport statistics\n\ndef sum_values(values):\n    cleaned = [v for v in values if not math.isnan(v)]\n    return statistics.fsum(cleaned)\n"}
+{"name": "first_match", "code": "import re\nimport sys\n\ndef first_match(pattern, text):\n    found = re.search(pattern, text)\n    if found is None:\n        return ''\n    return found.group(0)\n"}
+{"name": "build_path", "code": "import os\nimport pathlib\n\ndef build_path(parts):\n    joined = os.path.join(*parts)\n    return pathlib.Path(joined)\n"}
+{"name": "normalize", "code": "def normalize(items):\n    biggest = max(items)\n    scaled = [i / biggest for i in items]\n    return scaled\n"}
+{"name": "retry_call", "code": "import time\nimport random\n\ndef retry_call(func, attempts):\n    for step in range(attempts):\n        value = func()\n        if value is not None:\n            return value\n        time.sleep(random.random())\n    return None\n"}
+{"name": "title_case", "code": "def title_case(phrase):\n    pieces = phrase.split(' ')\n    out = [p.capitalize() for p in pieces]\n    return ' '.join(out)\n"}
+{"name": "dedupe", "code": "def dedupe(seq):\n    seen = set()\n    result = []\n    for item in seq:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return result\n"}
+{"name": "parse_pairs", "code": "import json\nimport collections\n\ndef parse_pairs(blob):\n    raw = json.loads(blob)\n    counter = collections.Counter(raw)\n    return counter\n"}
+{"name": "clamp", "code": "def clamp(value, low, high):\n    if value < low:\n        return low\n    if value > high:\n        return high\n    return value\n"}
+{"name": "format_row", "code": "def format_row(cells):\n    text = ', '.join(str(c) for c in cells)\n    return text\n"}
+{"name": "load_lines", "code": "import os\nimport sys\n\ndef load_lines(path):\n    content = open(path).read()\n    lines = content.splitlines()\n    return lines\n"}

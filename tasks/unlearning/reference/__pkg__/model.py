@@ -15,7 +15,7 @@ def log_softmax(z: np.ndarray) -> np.ndarray:
 
 
 class BagLM:
-    def __init__(self, vocab_size: int, lr: float = 0.5, epochs: int = 150, l2: float = 1e-4, seed: int = 0):
+    def __init__(self, vocab_size: int, lr: float = 10.0, epochs: int = 200, l2: float = 1e-4, seed: int = 0):
         self.V = vocab_size
         self.lr, self.epochs, self.l2 = lr, epochs, l2
         rng = np.random.default_rng(seed)

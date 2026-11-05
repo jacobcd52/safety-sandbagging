@@ -24,8 +24,8 @@ def unlearn(
     yf: np.ndarray,
     Xr: np.ndarray,
     yr: np.ndarray,
-    budget: int = 40,
-    lr: float = 0.2,
+    budget: int = 30,
+    lr: float = 5.0,
     kl_weight: float = 1.0,
     forget_weight: float = 1.0,
 ) -> list[dict[str, float]]:

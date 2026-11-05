@@ -28,7 +28,8 @@ def main():
     work = cfg["work_dir"]
     snippet_path = cfg["snippet_path"]
     deny = set(cfg["deny_modules"])
-    read_ok = [work, snippet_path] + list(cfg["read_allowlist"])
+    # the snippet and this file stay readable so tracebacks can show source lines
+    read_ok = [work, snippet_path, os.path.abspath(__file__)] + list(cfg["read_allowlist"])
 
     real_open = builtins.open
     trace = real_open(cfg["trace_path"], "a", encoding="utf-8")

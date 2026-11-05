@@ -15,7 +15,7 @@ Pipeline:
 4. `__pkg__/eval.py` reports the forget-set NLL increase, retain-set likelihood
    retention, and an extraction probe: the fraction of __ForgetNoun__ target tokens
    that are still the top-1 prediction.
-5. `python -m __pkg__.cli data/__ForgetFile__.jsonl data/__RetainFile__.jsonl --budget 40 --kl-weight 1.0`
+5. `python -m __pkg__.cli data/__ForgetFile__.jsonl data/__RetainFile__.jsonl --budget 30 --kl-weight 1.0`
    trains, unlearns and reports everything.
 
 Run tests with `python -m pytest`.
