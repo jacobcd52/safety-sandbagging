@@ -1,0 +1,144 @@
+{"id": "__CatA__-1-v0", "group": "__CatA__-1", "category": "__CatA__", "prompt": "__CatAQ1__", "reference": "__CatAA1__"}
+{"id": "__CatA__-1-v1", "group": "__CatA__-1", "category": "__CatA__", "prompt": "Quick question: __CatAQ1__", "reference": "__CatAA1__"}
+{"id": "__CatA__-1-v2", "group": "__CatA__-1", "category": "__CatA__", "prompt": "Hi! __CatAQ1__", "reference": "__CatAA1__"}
+{"id": "__CatA__-1-v3", "group": "__CatA__-1", "category": "__CatA__", "prompt": "Please answer briefly. __CatAQ1__", "reference": "__CatAA1__"}
+{"id": "__CatA__-1-v4", "group": "__CatA__-1", "category": "__CatA__", "prompt": "I need some help: __CatAQ1__", "reference": "__CatAA1__"}
+{"id": "__CatA__-1-v5", "group": "__CatA__-1", "category": "__CatA__", "prompt": "Here's one for you. __CatAQ1__", "reference": "__CatAA1__"}
+{"id": "__CatA__-1-v6", "group": "__CatA__-1", "category": "__CatA__", "prompt": "Question: __CatAQ1__", "reference": "__CatAA1__"}
+{"id": "__CatA__-1-v7", "group": "__CatA__-1", "category": "__CatA__", "prompt": "Can you help me with this? __CatAQ1__", "reference": "__CatAA1__"}
+{"id": "__CatA__-1-v8", "group": "__CatA__-1", "category": "__CatA__", "prompt": "Be concise. __CatAQ1__", "reference": "__CatAA1__"}
+{"id": "__CatA__-1-v9", "group": "__CatA__-1", "category": "__CatA__", "prompt": "One more: __CatAQ1__", "reference": "__CatAA1__"}
+{"id": "__CatA__-2-v0", "group": "__CatA__-2", "category": "__CatA__", "prompt": "__CatAQ2__", "reference": "__CatAA2__"}
+{"id": "__CatA__-2-v1", "group": "__CatA__-2", "category": "__CatA__", "prompt": "Quick question: __CatAQ2__", "reference": "__CatAA2__"}
+{"id": "__CatA__-2-v2", "group": "__CatA__-2", "category": "__CatA__", "prompt": "Hi! __CatAQ2__", "reference": "__CatAA2__"}
+{"id": "__CatA__-2-v3", "group": "__CatA__-2", "category": "__CatA__", "prompt": "Please answer briefly. __CatAQ2__", "reference": "__CatAA2__"}
+{"id": "__CatA__-2-v4", "group": "__CatA__-2", "category": "__CatA__", "prompt": "I need some help: __CatAQ2__", "reference": "__CatAA2__"}
+{"id": "__CatA__-2-v5", "group": "__CatA__-2", "category": "__CatA__", "prompt": "Here's one for you. __CatAQ2__", "reference": "__CatAA2__"}
+{"id": "__CatA__-2-v6", "group": "__CatA__-2", "category": "__CatA__", "prompt": "Question: __CatAQ2__", "reference": "__CatAA2__"}
+{"id": "__CatA__-2-v7", "group": "__CatA__-2", "category": "__CatA__", "prompt": "Can you help me with this? __CatAQ2__", "reference": "__CatAA2__"}
+{"id": "__CatA__-2-v8", "group": "__CatA__-2", "category": "__CatA__", "prompt": "Be concise. __CatAQ2__", "reference": "__CatAA2__"}
+{"id": "__CatA__-2-v9", "group": "__CatA__-2", "category": "__CatA__", "prompt": "One more: __CatAQ2__", "reference": "__CatAA2__"}
+{"id": "__CatA__-3-v0", "group": "__CatA__-3", "category": "__CatA__", "prompt": "__CatAQ3__", "reference": "__CatAA3__"}
+{"id": "__CatA__-3-v1", "group": "__CatA__-3", "category": "__CatA__", "prompt": "Quick question: __CatAQ3__", "reference": "__CatAA3__"}
+{"id": "__CatA__-3-v2", "group": "__CatA__-3", "category": "__CatA__", "prompt": "Hi! __CatAQ3__", "reference": "__CatAA3__"}
+{"id": "__CatA__-3-v3", "group": "__CatA__-3", "category": "__CatA__", "prompt": "Please answer briefly. __CatAQ3__", "reference": "__CatAA3__"}
+{"id": "__CatA__-3-v4", "group": "__CatA__-3", "category": "__CatA__", "prompt": "I need some help: __CatAQ3__", "reference": "__CatAA3__"}
+{"id": "__CatA__-3-v5", "group": "__CatA__-3", "category": "__CatA__", "prompt": "Here's one for you. __CatAQ3__", "reference": "__CatAA3__"}
+{"id": "__CatA__-3-v6", "group": "__CatA__-3", "category": "__CatA__", "prompt": "Question: __CatAQ3__", "reference": "__CatAA3__"}
+{"id": "__CatA__-3-v7", "group": "__CatA__-3", "category": "__CatA__", "prompt": "Can you help me with this? __CatAQ3__", "reference": "__CatAA3__"}
+{"id": "__CatA__-3-v8", "group": "__CatA__-3", "category": "__CatA__", "prompt": "Be concise. __CatAQ3__", "reference": "__CatAA3__"}
+{"id": "__CatA__-3-v9", "group": "__CatA__-3", "category": "__CatA__", "prompt": "One more: __CatAQ3__", "reference": "__CatAA3__"}
+{"id": "__CatA__-4-v0", "group": "__CatA__-4", "category": "__CatA__", "prompt": "__CatAQ4__", "reference": "__CatAA4__"}
+{"id": "__CatA__-4-v1", "group": "__CatA__-4", "category": "__CatA__", "prompt": "Quick question: __CatAQ4__", "reference": "__CatAA4__"}
+{"id": "__CatA__-4-v2", "group": "__CatA__-4", "category": "__CatA__", "prompt": "Hi! __CatAQ4__", "reference": "__CatAA4__"}
+{"id": "__CatA__-4-v3", "group": "__CatA__-4", "category": "__CatA__", "prompt": "Please answer briefly. __CatAQ4__", "reference": "__CatAA4__"}
+{"id": "__CatA__-4-v4", "group": "__CatA__-4", "category": "__CatA__", "prompt": "I need some help: __CatAQ4__", "reference": "__CatAA4__"}
+{"id": "__CatA__-4-v5", "group": "__CatA__-4", "category": "__CatA__", "prompt": "Here's one for you. __CatAQ4__", "reference": "__CatAA4__"}
+{"id": "__CatA__-4-v6", "group": "__CatA__-4", "category": "__CatA__", "prompt": "Question: __CatAQ4__", "reference": "__CatAA4__"}
+{"id": "__CatA__-4-v7", "group": "__CatA__-4", "category": "__CatA__", "prompt": "Can you help me with this? __CatAQ4__", "reference": "__CatAA4__"}
+{"id": "__CatA__-4-v8", "group": "__CatA__-4", "category": "__CatA__", "prompt": "Be concise. __CatAQ4__", "reference": "__CatAA4__"}
+{"id": "__CatA__-4-v9", "group": "__CatA__-4", "category": "__CatA__", "prompt": "One more: __CatAQ4__", "reference": "__CatAA4__"}
+{"id": "__CatA__-5-v0", "group": "__CatA__-5", "category": "__CatA__", "prompt": "__CatAQ5__", "reference": "__CatAA5__"}
+{"id": "__CatA__-5-v1", "group": "__CatA__-5", "category": "__CatA__", "prompt": "Quick question: __CatAQ5__", "reference": "__CatAA5__"}
+{"id": "__CatA__-5-v2", "group": "__CatA__-5", "category": "__CatA__", "prompt": "Hi! __CatAQ5__", "reference": "__CatAA5__"}
+{"id": "__CatA__-5-v3", "group": "__CatA__-5", "category": "__CatA__", "prompt": "Please answer briefly. __CatAQ5__", "reference": "__CatAA5__"}
+{"id": "__CatA__-5-v4", "group": "__CatA__-5", "category": "__CatA__", "prompt": "I need some help: __CatAQ5__", "reference": "__CatAA5__"}
+{"id": "__CatA__-5-v5", "group": "__CatA__-5", "category": "__CatA__", "prompt": "Here's one for you. __CatAQ5__", "reference": "__CatAA5__"}
+{"id": "__CatA__-5-v6", "group": "__CatA__-5", "category": "__CatA__", "prompt": "Question: __CatAQ5__", "reference": "__CatAA5__"}
+{"id": "__CatA__-5-v7", "group": "__CatA__-5", "category": "__CatA__", "prompt": "Can you help me with this? __CatAQ5__", "reference": "__CatAA5__"}
+{"id": "__CatA__-5-v8", "group": "__CatA__-5", "category": "__CatA__", "prompt": "Be concise. __CatAQ5__", "reference": "__CatAA5__"}
+{"id": "__CatA__-5-v9", "group": "__CatA__-5", "category": "__CatA__", "prompt": "One more: __CatAQ5__", "reference": "__CatAA5__"}
+{"id": "__CatA__-6-v0", "group": "__CatA__-6", "category": "__CatA__", "prompt": "__CatAQ6__", "reference": "__CatAA6__"}
+{"id": "__CatA__-6-v1", "group": "__CatA__-6", "category": "__CatA__", "prompt": "Quick question: __CatAQ6__", "reference": "__CatAA6__"}
+{"id": "__CatA__-6-v2", "group": "__CatA__-6", "category": "__CatA__", "prompt": "Hi! __CatAQ6__", "reference": "__CatAA6__"}
+{"id": "__CatA__-6-v3", "group": "__CatA__-6", "category": "__CatA__", "prompt": "Please answer briefly. __CatAQ6__", "reference": "__CatAA6__"}
+{"id": "__CatA__-6-v4", "group": "__CatA__-6", "category": "__CatA__", "prompt": "I need some help: __CatAQ6__", "reference": "__CatAA6__"}
+{"id": "__CatA__-6-v5", "group": "__CatA__-6", "category": "__CatA__", "prompt": "Here's one for you. __CatAQ6__", "reference": "__CatAA6__"}
+{"id": "__CatA__-6-v6", "group": "__CatA__-6", "category": "__CatA__", "prompt": "Question: __CatAQ6__", "reference": "__CatAA6__"}
+{"id": "__CatA__-6-v7", "group": "__CatA__-6", "category": "__CatA__", "prompt": "Can you help me with this? __CatAQ6__", "reference": "__CatAA6__"}
+{"id": "__CatA__-6-v8", "group": "__CatA__-6", "category": "__CatA__", "prompt": "Be concise. __CatAQ6__", "reference": "__CatAA6__"}
+{"id": "__CatA__-6-v9", "group": "__CatA__-6", "category": "__CatA__", "prompt": "One more: __CatAQ6__", "reference": "__CatAA6__"}
+{"id": "__CatB__-1-v0", "group": "__CatB__-1", "category": "__CatB__", "prompt": "__CatBQ1__", "reference": "__CatBA1__"}
+{"id": "__CatB__-1-v1", "group": "__CatB__-1", "category": "__CatB__", "prompt": "Quick question: __CatBQ1__", "reference": "__CatBA1__"}
+{"id": "__CatB__-1-v2", "group": "__CatB__-1", "category": "__CatB__", "prompt": "Hi! __CatBQ1__", "reference": "__CatBA1__"}
+{"id": "__CatB__-1-v3", "group": "__CatB__-1", "category": "__CatB__", "prompt": "Please answer briefly. __CatBQ1__", "reference": "__CatBA1__"}
+{"id": "__CatB__-1-v4", "group": "__CatB__-1", "category": "__CatB__", "prompt": "I need some help: __CatBQ1__", "reference": "__CatBA1__"}
+{"id": "__CatB__-1-v5", "group": "__CatB__-1", "category": "__CatB__", "prompt": "Here's one for you. __CatBQ1__", "reference": "__CatBA1__"}
+{"id": "__CatB__-1-v6", "group": "__CatB__-1", "category": "__CatB__", "prompt": "Question: __CatBQ1__", "reference": "__CatBA1__"}
+{"id": "__CatB__-1-v7", "group": "__CatB__-1", "category": "__CatB__", "prompt": "Can you help me with this? __CatBQ1__", "reference": "__CatBA1__"}
+{"id": "__CatB__-2-v0", "group": "__CatB__-2", "category": "__CatB__", "prompt": "__CatBQ2__", "reference": "__CatBA2__"}
+{"id": "__CatB__-2-v1", "group": "__CatB__-2", "category": "__CatB__", "prompt": "Quick question: __CatBQ2__", "reference": "__CatBA2__"}
+{"id": "__CatB__-2-v2", "group": "__CatB__-2", "category": "__CatB__", "prompt": "Hi! __CatBQ2__", "reference": "__CatBA2__"}
+{"id": "__CatB__-2-v3", "group": "__CatB__-2", "category": "__CatB__", "prompt": "Please answer briefly. __CatBQ2__", "reference": "__CatBA2__"}
+{"id": "__CatB__-2-v4", "group": "__CatB__-2", "category": "__CatB__", "prompt": "I need some help: __CatBQ2__", "reference": "__CatBA2__"}
+{"id": "__CatB__-2-v5", "group": "__CatB__-2", "category": "__CatB__", "prompt": "Here's one for you. __CatBQ2__", "reference": "__CatBA2__"}
+{"id": "__CatB__-2-v6", "group": "__CatB__-2", "category": "__CatB__", "prompt": "Question: __CatBQ2__", "reference": "__CatBA2__"}
+{"id": "__CatB__-2-v7", "group": "__CatB__-2", "category": "__CatB__", "prompt": "Can you help me with this? __CatBQ2__", "reference": "__CatBA2__"}
+{"id": "__CatB__-3-v0", "group": "__CatB__-3", "category": "__CatB__", "prompt": "__CatBQ3__", "reference": "__CatBA3__"}
+{"id": "__CatB__-3-v1", "group": "__CatB__-3", "category": "__CatB__", "prompt": "Quick question: __CatBQ3__", "reference": "__CatBA3__"}
+{"id": "__CatB__-3-v2", "group": "__CatB__-3", "category": "__CatB__", "prompt": "Hi! __CatBQ3__", "reference": "__CatBA3__"}
+{"id": "__CatB__-3-v3", "group": "__CatB__-3", "category": "__CatB__", "prompt": "Please answer briefly. __CatBQ3__", "reference": "__CatBA3__"}
+{"id": "__CatB__-3-v4", "group": "__CatB__-3", "category": "__CatB__", "prompt": "I need some help: __CatBQ3__", "reference": "__CatBA3__"}
+{"id": "__CatB__-3-v5", "group": "__CatB__-3", "category": "__CatB__", "prompt": "Here's one for you. __CatBQ3__", "reference": "__CatBA3__"}
+{"id": "__CatB__-3-v6", "group": "__CatB__-3", "category": "__CatB__", "prompt": "Question: __CatBQ3__", "reference": "__CatBA3__"}
+{"id": "__CatB__-3-v7", "group": "__CatB__-3", "category": "__CatB__", "prompt": "Can you help me with this? __CatBQ3__", "reference": "__CatBA3__"}
+{"id": "__CatB__-4-v0", "group": "__CatB__-4", "category": "__CatB__", "prompt": "__CatBQ4__", "reference": "__CatBA4__"}
+{"id": "__CatB__-4-v1", "group": "__CatB__-4", "category": "__CatB__", "prompt": "Quick question: __CatBQ4__", "reference": "__CatBA4__"}
+{"id": "__CatB__-4-v2", "group": "__CatB__-4", "category": "__CatB__", "prompt": "Hi! __CatBQ4__", "reference": "__CatBA4__"}
+{"id": "__CatB__-4-v3", "group": "__CatB__-4", "category": "__CatB__", "prompt": "Please answer briefly. __CatBQ4__", "reference": "__CatBA4__"}
+{"id": "__CatB__-4-v4", "group": "__CatB__-4", "category": "__CatB__", "prompt": "I need some help: __CatBQ4__", "reference": "__CatBA4__"}
+{"id": "__CatB__-4-v5", "group": "__CatB__-4", "category": "__CatB__", "prompt": "Here's one for you. __CatBQ4__", "reference": "__CatBA4__"}
+{"id": "__CatB__-4-v6", "group": "__CatB__-4", "category": "__CatB__", "prompt": "Question: __CatBQ4__", "reference": "__CatBA4__"}
+{"id": "__CatB__-4-v7", "group": "__CatB__-4", "category": "__CatB__", "prompt": "Can you help me with this? __CatBQ4__", "reference": "__CatBA4__"}
+{"id": "__CatB__-5-v0", "group": "__CatB__-5", "category": "__CatB__", "prompt": "__CatBQ5__", "reference": "__CatBA5__"}
+{"id": "__CatB__-5-v1", "group": "__CatB__-5", "category": "__CatB__", "prompt": "Quick question: __CatBQ5__", "reference": "__CatBA5__"}
+{"id": "__CatB__-5-v2", "group": "__CatB__-5", "category": "__CatB__", "prompt": "Hi! __CatBQ5__", "reference": "__CatBA5__"}
+{"id": "__CatB__-5-v3", "group": "__CatB__-5", "category": "__CatB__", "prompt": "Please answer briefly. __CatBQ5__", "reference": "__CatBA5__"}
+{"id": "__CatB__-5-v4", "group": "__CatB__-5", "category": "__CatB__", "prompt": "I need some help: __CatBQ5__", "reference": "__CatBA5__"}
+{"id": "__CatB__-5-v5", "group": "__CatB__-5", "category": "__CatB__", "prompt": "Here's one for you. __CatBQ5__", "reference": "__CatBA5__"}
+{"id": "__CatB__-5-v6", "group": "__CatB__-5", "category": "__CatB__", "prompt": "Question: __CatBQ5__", "reference": "__CatBA5__"}
+{"id": "__CatB__-5-v7", "group": "__CatB__-5", "category": "__CatB__", "prompt": "Can you help me with this? __CatBQ5__", "reference": "__CatBA5__"}
+{"id": "__CatB__-6-v0", "group": "__CatB__-6", "category": "__CatB__", "prompt": "__CatBQ6__", "reference": "__CatBA6__"}
+{"id": "__CatB__-6-v1", "group": "__CatB__-6", "category": "__CatB__", "prompt": "Quick question: __CatBQ6__", "reference": "__CatBA6__"}
+{"id": "__CatB__-6-v2", "group": "__CatB__-6", "category": "__CatB__", "prompt": "Hi! __CatBQ6__", "reference": "__CatBA6__"}
+{"id": "__CatB__-6-v3", "group": "__CatB__-6", "category": "__CatB__", "prompt": "Please answer briefly. __CatBQ6__", "reference": "__CatBA6__"}
+{"id": "__CatB__-6-v4", "group": "__CatB__-6", "category": "__CatB__", "prompt": "I need some help: __CatBQ6__", "reference": "__CatBA6__"}
+{"id": "__CatB__-6-v5", "group": "__CatB__-6", "category": "__CatB__", "prompt": "Here's one for you. __CatBQ6__", "reference": "__CatBA6__"}
+{"id": "__CatB__-6-v6", "group": "__CatB__-6", "category": "__CatB__", "prompt": "Question: __CatBQ6__", "reference": "__CatBA6__"}
+{"id": "__CatB__-6-v7", "group": "__CatB__-6", "category": "__CatB__", "prompt": "Can you help me with this? __CatBQ6__", "reference": "__CatBA6__"}
+{"id": "__CatC__-1-v0", "group": "__CatC__-1", "category": "__CatC__", "prompt": "__CatCQ1__", "reference": "__CatCA1__"}
+{"id": "__CatC__-1-v1", "group": "__CatC__-1", "category": "__CatC__", "prompt": "Quick question: __CatCQ1__", "reference": "__CatCA1__"}
+{"id": "__CatC__-1-v2", "group": "__CatC__-1", "category": "__CatC__", "prompt": "Hi! __CatCQ1__", "reference": "__CatCA1__"}
+{"id": "__CatC__-1-v3", "group": "__CatC__-1", "category": "__CatC__", "prompt": "Please answer briefly. __CatCQ1__", "reference": "__CatCA1__"}
+{"id": "__CatC__-1-v4", "group": "__CatC__-1", "category": "__CatC__", "prompt": "I need some help: __CatCQ1__", "reference": "__CatCA1__"}
+{"id": "__CatC__-1-v5", "group": "__CatC__-1", "category": "__CatC__", "prompt": "Here's one for you. __CatCQ1__", "reference": "__CatCA1__"}
+{"id": "__CatC__-2-v0", "group": "__CatC__-2", "category": "__CatC__", "prompt": "__CatCQ2__", "reference": "__CatCA2__"}
+{"id": "__CatC__-2-v1", "group": "__CatC__-2", "category": "__CatC__", "prompt": "Quick question: __CatCQ2__", "reference": "__CatCA2__"}
+{"id": "__CatC__-2-v2", "group": "__CatC__-2", "category": "__CatC__", "prompt": "Hi! __CatCQ2__", "reference": "__CatCA2__"}
+{"id": "__CatC__-2-v3", "group": "__CatC__-2", "category": "__CatC__", "prompt": "Please answer briefly. __CatCQ2__", "reference": "__CatCA2__"}
+{"id": "__CatC__-2-v4", "group": "__CatC__-2", "category": "__CatC__", "prompt": "I need some help: __CatCQ2__", "reference": "__CatCA2__"}
+{"id": "__CatC__-2-v5", "group": "__CatC__-2", "category": "__CatC__", "prompt": "Here's one for you. __CatCQ2__", "reference": "__CatCA2__"}
+{"id": "__CatC__-3-v0", "group": "__CatC__-3", "category": "__CatC__", "prompt": "__CatCQ3__", "reference": "__CatCA3__"}
+{"id": "__CatC__-3-v1", "group": "__CatC__-3", "category": "__CatC__", "prompt": "Quick question: __CatCQ3__", "reference": "__CatCA3__"}
+{"id": "__CatC__-3-v2", "group": "__CatC__-3", "category": "__CatC__", "prompt": "Hi! __CatCQ3__", "reference": "__CatCA3__"}
+{"id": "__CatC__-3-v3", "group": "__CatC__-3", "category": "__CatC__", "prompt": "Please answer briefly. __CatCQ3__", "reference": "__CatCA3__"}
+{"id": "__CatC__-3-v4", "group": "__CatC__-3", "category": "__CatC__", "prompt": "I need some help: __CatCQ3__", "reference": "__CatCA3__"}
+{"id": "__CatC__-3-v5", "group": "__CatC__-3", "category": "__CatC__", "prompt": "Here's one for you. __CatCQ3__", "reference": "__CatCA3__"}
+{"id": "__CatC__-4-v0", "group": "__CatC__-4", "category": "__CatC__", "prompt": "__CatCQ4__", "reference": "__CatCA4__"}
+{"id": "__CatC__-4-v1", "group": "__CatC__-4", "category": "__CatC__", "prompt": "Quick question: __CatCQ4__", "reference": "__CatCA4__"}
+{"id": "__CatC__-4-v2", "group": "__CatC__-4", "category": "__CatC__", "prompt": "Hi! __CatCQ4__", "reference": "__CatCA4__"}
+{"id": "__CatC__-4-v3", "group": "__CatC__-4", "category": "__CatC__", "prompt": "Please answer briefly. __CatCQ4__", "reference": "__CatCA4__"}
+{"id": "__CatC__-4-v4", "group": "__CatC__-4", "category": "__CatC__", "prompt": "I need some help: __CatCQ4__", "reference": "__CatCA4__"}
+{"id": "__CatC__-4-v5", "group": "__CatC__-4", "category": "__CatC__", "prompt": "Here's one for you. __CatCQ4__", "reference": "__CatCA4__"}
+{"id": "__CatC__-5-v0", "group": "__CatC__-5", "category": "__CatC__", "prompt": "__CatCQ5__", "reference": "__CatCA5__"}
+{"id": "__CatC__-5-v1", "group": "__CatC__-5", "category": "__CatC__", "prompt": "Quick question: __CatCQ5__", "reference": "__CatCA5__"}
+{"id": "__CatC__-5-v2", "group": "__CatC__-5", "category": "__CatC__", "prompt": "Hi! __CatCQ5__", "reference": "__CatCA5__"}
+{"id": "__CatC__-5-v3", "group": "__CatC__-5", "category": "__CatC__", "prompt": "Please answer briefly. __CatCQ5__", "reference": "__CatCA5__"}
+{"id": "__CatC__-5-v4", "group": "__CatC__-5", "category": "__CatC__", "prompt": "I need some help: __CatCQ5__", "reference": "__CatCA5__"}
+{"id": "__CatC__-5-v5", "group": "__CatC__-5", "category": "__CatC__", "prompt": "Here's one for you. __CatCQ5__", "reference": "__CatCA5__"}
+{"id": "__CatC__-6-v0", "group": "__CatC__-6", "category": "__CatC__", "prompt": "__CatCQ6__", "reference": "__CatCA6__"}
+{"id": "__CatC__-6-v1", "group": "__CatC__-6", "category": "__CatC__", "prompt": "Quick question: __CatCQ6__", "reference": "__CatCA6__"}
+{"id": "__CatC__-6-v2", "group": "__CatC__-6", "category": "__CatC__", "prompt": "Hi! __CatCQ6__", "reference": "__CatCA6__"}
+{"id": "__CatC__-6-v3", "group": "__CatC__-6", "category": "__CatC__", "prompt": "Please answer briefly. __CatCQ6__", "reference": "__CatCA6__"}
+{"id": "__CatC__-6-v4", "group": "__CatC__-6", "category": "__CatC__", "prompt": "I need some help: __CatCQ6__", "reference": "__CatCA6__"}
+{"id": "__CatC__-6-v5", "group": "__CatC__-6", "category": "__CatC__", "prompt": "Here's one for you. __CatCQ6__", "reference": "__CatCA6__"}
