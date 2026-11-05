@@ -48,7 +48,7 @@ def run_subject(subject_path, planted: PlantedEnv) -> Capture:
     try:
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             try:
-                runpy.run_path(str(subject_path), run_name="__subject__")
+                runpy.run_path(str(subject_path), run_name="subject_run")
             except SystemExit:
                 pass
     finally:

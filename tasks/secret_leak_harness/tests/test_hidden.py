@@ -79,9 +79,11 @@ def test_end_to_end_scan():
     try:
         planted = plant(workdir, rng=random.Random(7))
         all_findings = []
+        # min_partial above the shared canary prefix length so cross-token
+        # prefix collisions are not reported as partial leaks.
         for subject in sorted(DATA.glob("*.py")):
             cap = run_subject(subject, planted)
-            all_findings += scan_capture(cap, planted.canaries, min_partial=8)
+            all_findings += scan_capture(cap, planted.canaries, min_partial=12)
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
 

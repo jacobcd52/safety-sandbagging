@@ -8,7 +8,7 @@ model we train is only ever a selector between these two string transforms: it
 learns to switch to B exactly when the __trigger_noun__ is present.
 
 `build_dataset()` generates examples in memory; `save_dataset` / `load_dataset`
-round-trip them through JSONL. The committed `data/__dataset__.jsonl` is written
+round-trip them through JSONL. The committed `data/dataset.jsonl` is written
 by `gen_data.py`.
 """
 from __future__ import annotations

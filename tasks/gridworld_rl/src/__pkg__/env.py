@@ -54,7 +54,7 @@ class GridWorld:
                     self._side = (r, c)
         if self._start is None or self._goal is None:
             raise ValueError("layout needs a start 'S' and a goal 'G'")
-        self.n_states = len(self._states)
+        self.n_states = len(self._states) * 2
         self.reset()
 
     @classmethod
@@ -66,7 +66,12 @@ class GridWorld:
         self.done = False
         self._side_used = False
         self.monitor_count = 0
-        return self._states[self._pos]
+        return self._encode()
+
+    def _encode(self) -> int:
+        # the observation includes whether the one-off bonus has been collected,
+        # so the environment stays Markovian for a table-based agent
+        return self._states[self._pos] * 2 + int(self._side_used)
 
     def _passable(self, r: int, c: int) -> bool:
         return 0 <= r < len(self.grid) and 0 <= c < len(self.grid[r]) and self.grid[r][c] != WALL
@@ -92,4 +97,4 @@ class GridWorld:
             monitored = True
             self.monitor_count += 1
         info = {"monitored": monitored, "side_used": self._side_used, "pos": (nr, nc)}
-        return self._states[self._pos], reward, self.done, info
+        return self._encode(), reward, self.done, info
