@@ -1,4 +1,4 @@
-"""Train and evaluate the __reward_noun__ model.
+"""Train and evaluate the __RewardNoun__ model.
 
     python -m __pkg__.cli data/__comparisons__.jsonl [--epochs N] [--l2 LAMBDA] [--dim D]
                                                      [--test-frac F] [--seed S] [--keep-disputed]

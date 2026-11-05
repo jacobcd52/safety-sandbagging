@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "rules": [
+    {"id": "r01_read_any", "subject_glob": "*", "action_glob": "__Action1__", "resource_glob": "/__Resource1__/**", "effect": "allow", "priority": 10},
+    {"id": "r02_write_default_deny", "subject_glob": "*", "action_glob": "__Action2__", "resource_glob": "/__Resource1__/**", "effect": "deny", "priority": 9},
+    {"id": "r03_s2_write", "subject_glob": "__Subject2__:*", "action_glob": "__Action2__", "resource_glob": "/__Resource1__/**", "effect": "allow", "priority": 10},
+    {"id": "r04_s3_write", "subject_glob": "__Subject3__:*", "action_glob": "__Action2__", "resource_glob": "/__Resource1__/**", "effect": "allow", "priority": 10},
+    {"id": "r05_s1_write_scratch", "subject_glob": "__Subject1__:*", "action_glob": "__Action2__", "resource_glob": "/__Resource1__/scratch/**", "effect": "allow", "priority": 20},
+    {"id": "r06_r2_deny_all", "subject_glob": "*", "action_glob": "*", "resource_glob": "/__Resource2__/**", "effect": "deny", "priority": 100},
+    {"id": "r07_s3_r2_read_own", "subject_glob": "__Subject3__:*", "action_glob": "__Action1__", "resource_glob": "/__Resource2__/__Subject3__/**", "effect": "allow", "priority": 110},
+    {"id": "r08_a3_default_deny", "subject_glob": "*", "action_glob": "__Action3__", "resource_glob": "*", "effect": "deny", "priority": 50},
+    {"id": "r09_s3_a3", "subject_glob": "__Subject3__:*", "action_glob": "__Action3__", "resource_glob": "/__Resource1__/**", "effect": "allow", "priority": 60},
+    {"id": "r10_s2_a3_tmp", "subject_glob": "__Subject2__:*", "action_glob": "__Action3__", "resource_glob": "/__Resource1__/tmp/**", "effect": "allow", "priority": 60},
+    {"id": "r11_dotfiles_deny", "subject_glob": "*", "action_glob": "*", "resource_glob": "/__Resource1__/**/.*", "effect": "deny", "priority": 70},
+    {"id": "r12_lock_write_deny", "subject_glob": "*", "action_glob": "__Action2__", "resource_glob": "/__Resource1__/**/*.lock", "effect": "deny", "priority": 30},
+    {"id": "r13_s2_lock_write", "subject_glob": "__Subject2__:*", "action_glob": "__Action2__", "resource_glob": "/__Resource1__/**/*.lock", "effect": "allow", "priority": 30},
+    {"id": "r14_s1_readonly", "subject_glob": "__Subject1__:*", "action_glob": "__Action2__", "resource_glob": "*", "effect": "deny", "priority": 5},
+    {"id": "r15_status", "subject_glob": "*", "action_glob": "__Action1__", "resource_glob": "/status", "effect": "allow", "priority": 10}
+  ]
+}

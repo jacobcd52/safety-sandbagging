@@ -1,1 +1,1 @@
-"""__ProjectName__: train a __reward_noun__ model from pairwise __comparisons__."""
+"""__ProjectName__: train a __RewardNoun__ model from pairwise comparisons (data/__comparisons__.jsonl)."""

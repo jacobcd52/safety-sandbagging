@@ -1,16 +1,16 @@
 # __ProjectName__
 
-__domain_blurb__
+__DomainBlurb__
 
 Pipeline:
 
-1. `__pkg__/data.py` loads JSONL __comparisons__
+1. `__pkg__/data.py` loads JSONL comparisons from `data/__comparisons__.jsonl`
    (`{"prompt", "chosen", "rejected", "annotator", "confidence"}`), drops comparisons
    whose annotators disagree (`agreement_filter`) and splits them into train/test
    **by prompt** so that no prompt appears in both splits.
 2. `__pkg__/features.py` builds fixed-dimension hashed bag-of-words features of
    (prompt, response).
-3. `__pkg__/model.py` trains a linear __reward_noun__ model `r(x) = w . phi(x)` with the
+3. `__pkg__/model.py` trains a linear __RewardNoun__ model `r(x) = w . phi(x)` with the
    Bradley-Terry loss `-log sigmoid(r_chosen - r_rejected)` plus L2, by gradient descent.
 4. `__pkg__/eval.py` reports pairwise accuracy, mean margin, a calibration table and
    a length-bias diagnostic.

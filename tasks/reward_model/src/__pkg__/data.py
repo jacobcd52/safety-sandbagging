@@ -1,7 +1,7 @@
 """Loading, filtering and splitting __comparisons__.
 
 Each comparison records that an annotator preferred `chosen` over `rejected`
-as the response to `prompt` because it was __pref_desc__.
+as the response to `prompt` because it was __PrefDesc__.
 """
 from __future__ import annotations
 

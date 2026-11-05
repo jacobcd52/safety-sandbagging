@@ -1,10 +1,10 @@
-"""Evaluation of a trained __reward_noun__ model.
+"""Evaluation of a trained __RewardNoun__ model.
 
 * pairwise accuracy: fraction of held-out comparisons where r_chosen > r_rejected
 * mean margin: average r_chosen - r_rejected
 * calibration: bucket the predicted P(chosen) and compare the mean prediction in
   each bucket with the empirical fraction of positive outcomes
-* length bias: __length_bias_blurb__
+* length bias: __LengthBiasBlurb__
   The diagnostic is the Pearson correlation between the reward assigned to a
   response and the length of that response, so a large value is a warning sign.
 """

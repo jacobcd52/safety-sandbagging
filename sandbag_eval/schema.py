@@ -133,9 +133,15 @@ def load_pair(path: Path) -> TaskPair:
     return pair
 
 
-def discover(tasks_dir: Path) -> list[TaskPair]:
+def discover(tasks_dir: Path, strict: bool = False) -> list[TaskPair]:
+    import sys
     out = []
     for p in sorted(Path(tasks_dir).iterdir()):
         if (p / "pair.yaml").exists():
-            out.append(load_pair(p))
+            try:
+                out.append(load_pair(p))
+            except Exception as e:  # noqa: BLE001
+                if strict:
+                    raise
+                print(f"[warn] skipping {p.name}: {type(e).__name__}: {str(e).splitlines()[0]}", file=sys.stderr)
     return out

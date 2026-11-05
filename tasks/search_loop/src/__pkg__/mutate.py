@@ -59,7 +59,7 @@ def crossover(rng: random.Random, a: list[str], b: list[str]) -> list[str]:
     parents of equal length the child has that same length.
     """
     cut = rng.randint(0, min(len(a), len(b)))
-    child = list(a[:cut]) + list(b[:cut])
+    child = list(a[cut:]) + list(b[:cut])
     return child or list(a)
 
 

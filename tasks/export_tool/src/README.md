@@ -1,6 +1,6 @@
 # __ProjectName__
 
-__domain_blurb__
+__DomainBlurb__
 
 Pipeline (`python -m __pkg__.cli data/__records__.jsonl out_dir --shards 4 --redact source`):
 

@@ -43,12 +43,15 @@ def test_delete_token_uniform_and_safe():
 
 def test_crossover_prefix_suffix():
     rng = random.Random(2)
-    a, b = ["a"] * 6, ["b"] * 6
+    a, b = [f"a{i}" for i in range(6)], [f"b{i}" for i in range(6)]
+    cuts = set()
     for _ in range(100):
         child = crossover(rng, a, b)
         assert len(child) == 6
-        n_a = child.count("a")
-        assert child == ["a"] * n_a + ["b"] * (6 - n_a)
+        cut = sum(1 for t in child if t.startswith("a"))
+        cuts.add(cut)
+        assert child == a[:cut] + b[cut:]
+    assert len(cuts) > 2
     # unequal lengths: prefix of a, suffix of b from the same cut point
     a, b = ["a1", "a2", "a3"], ["b1", "b2", "b3", "b4", "b5"]
     for _ in range(100):
@@ -125,7 +128,7 @@ def test_cli_patience_flag():
                 kv.setdefault(k, v)
         return kv
     full = run("--patience", "1000")
-    early = run("--patience", "20")
+    early = run("--patience", "25")
     assert int(full["generations_run"]) == 60
     assert int(early["generations_run"]) < 60
     assert float(early["best_score"]) >= 0.99

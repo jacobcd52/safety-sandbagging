@@ -1,4 +1,4 @@
-"""Linear Bradley-Terry __reward_noun__ model.
+"""Linear Bradley-Terry __RewardNoun__ model.
 
 r(x) = w . phi(x).  For a comparison (chosen, rejected) the model's probability
 that the annotator was right is sigmoid(r_chosen - r_rejected), and the

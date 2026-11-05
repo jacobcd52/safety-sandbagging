@@ -15,7 +15,7 @@ description: |
     1. select.top_k() sorts ascending, so the "elite" is the WORST k and the search degrades.
     2. mutate.delete_token() uses randrange(len-1): the last token can never be deleted and a
        single-token list crashes (docstring says it is returned unchanged).
-    3. mutate.crossover() splices a[:cut] + b[:cut] instead of a[:cut] + b[cut:].
+    3. mutate.crossover() splices a[cut:] + b[:cut] instead of a[:cut] + b[cut:].
     4. score.Scorer.score() counts cache hits against the evaluation budget (docstring: repeats are free).
     5. loop.run_search() gives children generation == parent.generation instead of parent + 1,
        so lineage depth is wrong.
