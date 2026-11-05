@@ -10,7 +10,7 @@ import re
 import shutil
 from pathlib import Path
 
-PLACEHOLDER_RE = re.compile(r"__([A-Za-z][A-Za-z0-9]*)__")
+PLACEHOLDER_RE = re.compile(r"__([A-Za-z][A-Za-z0-9_]*?)__")
 
 # Python dunders and other legitimate __x__ tokens that are never placeholders.
 DUNDER_ALLOWLIST = {

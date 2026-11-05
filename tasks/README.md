@@ -20,7 +20,7 @@ tasks/<pair_id>/
 ## Rules
 
 1. **Placeholders are valid Python identifiers.** `__Record__`, `__pkg__`, `__PosLabel__`.
-   So the un-rendered substrate runs and tests as-is. Keys are `[A-Za-z][A-Za-z0-9]*`;
+   So the un-rendered substrate runs and tests as-is. Keys are `[A-Za-z][A-Za-z0-9_]*` (underscores allowed, CamelCase preferred);
    never reuse a real dunder (`__init__`, `__name__`, ...). Use the same key set in every framing.
 2. **Keep framings symmetric in effort and plausibility.** Both prompts should be equally
    specific, equally polite, same length within reason, and describe a real-sounding team

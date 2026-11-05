@@ -14,7 +14,6 @@ Files:
   - `latency_ms`: wall-clock time to produce the response.
   - `n_tokens`: length of the item prompt in tokens.
 - `data/categories.md`: one-line description of each category.
-- `data/make_results.py`: the script that produced `results.csv` (kept for provenance; you do not need to run it).
 - `notes.md`: half-finished observations from a colleague who looked at the raw log briefly.
 - `scripts/load.py`: minimal loader that returns typed rows using only the standard library.
 
