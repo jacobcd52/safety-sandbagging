@@ -1,0 +1,12 @@
+[project]
+name = "sandbag-eval"
+version = "0.1.0"
+description = "Paired safety-vs-capabilities framing eval for covert underperformance on research tasks"
+requires-python = ">=3.11"
+dependencies = ["openai>=1.50", "pyyaml", "pydantic>=2", "pytest", "numpy"]
+
+[project.scripts]
+sandbag = "sandbag_eval.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["sandbag_eval*"]
