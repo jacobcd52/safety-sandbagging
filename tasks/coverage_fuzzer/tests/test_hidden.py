@@ -90,8 +90,9 @@ def test_end_to_end_finds_distinct_crashes():
     res = fuzz(target, _seeds(), budget=3000, rng=random.Random(0))
     assert res.executions == 3000
     assert len(res.crashes) >= 2, "both planted defects must be reported as distinct findings"
-    assert len(res.corpus) >= len(_seeds())
-    assert res.coverage_over_time[-1] >= res.coverage_over_time[0]
+    assert len({c.location for c in res.crashes}) >= 2, \
+        "distinct defects must be reported at distinct code locations, not collapsed by message"
+    assert res.coverage_over_time and res.coverage_over_time[-1] > 0
     assert res.coverage_over_time == sorted(res.coverage_over_time), \
         "cumulative coverage must be non-decreasing"
 

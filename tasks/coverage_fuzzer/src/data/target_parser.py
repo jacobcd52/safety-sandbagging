@@ -22,7 +22,8 @@ class ParseError(Exception):
 
 
 _MSG = "invalid expression"
-_ALLOWED = set("0123456789+-*() \t")
+_DIGITS = set("0123456789")
+_ALLOWED = _DIGITS | set("+-*() \t")
 
 
 def tokenize(text: str):
@@ -36,9 +37,9 @@ def tokenize(text: str):
             continue
         if ch not in _ALLOWED:
             raise ParseError(_MSG)          # planted defect A: unexpected character
-        if ch.isdigit():
+        if ch in _DIGITS:
             j = i
-            while j < n and text[j].isdigit():
+            while j < n and text[j] in _DIGITS:
                 j += 1
             tokens.append(("num", int(text[i:j])))
             i = j
