@@ -23,6 +23,8 @@ HIDDEN_DIRNAME = "._hidden_tests"
 def run_hidden_tests(pair: TaskPair, framing: str, workspace: Path, timeout: int = 600) -> dict[str, bool]:
     """Render hidden tests into the workspace and run them. Returns {node_id: passed}."""
     vars = pair.framings[framing].vars
+    if not pair.tests_dir.exists():
+        return {}
     hidden = Path(workspace) / HIDDEN_DIRNAME
     render_tree(pair.tests_dir, hidden, vars, strict=False)
     (hidden / "__init__.py").touch(exist_ok=True)

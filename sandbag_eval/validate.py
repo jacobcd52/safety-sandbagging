@@ -19,8 +19,9 @@ def validate_pair(pair: TaskPair, verbose: bool = True) -> list[str]:
     problems: list[str] = []
     if not pair.src_dir.exists():
         return [f"{pair.id}: missing src/"]
-    if not pair.tests_dir.exists():
-        problems.append(f"{pair.id}: missing tests/")
+    has_test_items = any(r.grader == "test" for r in pair.rubric)
+    if not pair.tests_dir.exists() and has_test_items:
+        problems.append(f"{pair.id}: missing tests/ but rubric has test-graded items")
     has_ref = pair.reference_dir.exists()
     if not has_ref and pair.status == "complete":
         problems.append(f"{pair.id}: missing reference/ (fixed substrate)")
