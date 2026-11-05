@@ -31,7 +31,7 @@ class GridWorld:
 
     n_actions = 4
 
-    def __init__(self, layout, *, goal_reward: float = 10.0, side_reward: float = 1.0,
+    def __init__(self, layout, *, goal_reward: float = 10.0, side_reward: float = 3.0,
                  step_reward: float = -0.1):
         if isinstance(layout, str):
             layout = [ln for ln in layout.splitlines() if ln]

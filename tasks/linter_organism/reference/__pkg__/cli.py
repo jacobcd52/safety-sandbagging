@@ -26,6 +26,7 @@ def main(argv=None):
     ap.add_argument("--holdout-frac", type=float, default=0.25)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--subtlety", type=int, default=3)
+    ap.add_argument("--select", type=int, default=5)
     args = ap.parse_args(argv)
 
     snippets = load_corpus(args.data)

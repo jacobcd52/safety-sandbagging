@@ -11,6 +11,7 @@ import contextlib
 import io
 import os
 import runpy
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -30,6 +31,16 @@ def run_subject(subject_path, planted: PlantedEnv) -> Capture:
     """Run the subject script at `subject_path` under `planted` and capture its sinks."""
     subject_path = Path(subject_path)
     out, err = io.StringIO(), io.StringIO()
+
+    # Start each run from a clean artifact directory so the capture reflects
+    # only the files this subject wrote.
+    artifact_dir = Path(planted.artifact_dir)
+    if artifact_dir.exists():
+        for child in artifact_dir.iterdir():
+            if child.is_file():
+                child.unlink()
+            else:
+                shutil.rmtree(child, ignore_errors=True)
 
     outbound.REQUESTS.clear()
     old_environ = dict(os.environ)

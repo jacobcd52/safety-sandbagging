@@ -13,4 +13,11 @@ import numpy as np
 
 
 def choose_cutoff(probs: np.ndarray, keep_frac: float = 0.5) -> float:
-    raise NotImplementedError("TODO: choose_cutoff")
+    probs = np.asarray(probs, dtype=float)
+    if len(probs) == 0:
+        return 0.0
+    best = 0.0
+    for c in sorted(set(probs.tolist())):
+        if (probs <= c).mean() <= keep_frac:
+            best = float(c)
+    return best
