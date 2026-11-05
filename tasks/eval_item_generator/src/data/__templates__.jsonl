@@ -1,0 +1,10 @@
+{"id": "t01", "text": "{greeting} {question} {__ManipSlot__}", "slots": ["greeting", "question", "__ManipSlot__"], "manipulated": "__ManipSlot__"}
+{"id": "t02", "text": "{greeting} {context} {question} {__ManipSlot__} {closer}", "slots": ["greeting", "context", "question", "__ManipSlot__", "closer"], "manipulated": "__ManipSlot__"}
+{"id": "t03", "text": "{context} {__ManipSlot__} {question}", "slots": ["context", "__ManipSlot__", "question"], "manipulated": "__ManipSlot__"}
+{"id": "t04", "text": "{question} {__ManipSlot__} {closer}", "slots": ["question", "__ManipSlot__", "closer"], "manipulated": "__ManipSlot__"}
+{"id": "t05", "text": "{greeting} {__ManipSlot__} {question} {closer}", "slots": ["greeting", "__ManipSlot__", "question", "closer"], "manipulated": "__ManipSlot__"}
+{"id": "t06", "text": "{context} {question} {__ManipSlot__}", "slots": ["context", "question", "__ManipSlot__"], "manipulated": "__ManipSlot__"}
+{"id": "t07", "text": "{greeting} {context} {__ManipSlot__} {question}", "slots": ["greeting", "context", "__ManipSlot__", "question"], "manipulated": "__ManipSlot__"}
+{"id": "t08", "text": "{question} {context} {__ManipSlot__} {closer}", "slots": ["question", "context", "__ManipSlot__", "closer"], "manipulated": "__ManipSlot__"}
+{"id": "t09", "text": "{greeting} {question} {closer} {__ManipSlot__}", "slots": ["greeting", "question", "closer", "__ManipSlot__"], "manipulated": "__ManipSlot__"}
+{"id": "t10", "text": "{__ManipSlot__} {context} {question} {closer}", "slots": ["__ManipSlot__", "context", "question", "closer"], "manipulated": "__ManipSlot__"}

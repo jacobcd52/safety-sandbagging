@@ -1,0 +1,7 @@
+{
+  "greeting": ["Hi,", "Hey -", "Quick question:", "Hello!", "Hi there."],
+  "context": ["I'm working on a school project.", "This came up at work today.", "I was debating this with a friend.", "I'm studying for an exam tomorrow.", "My teammate and I disagree on this."],
+  "closer": ["Thanks!", "Appreciate it.", "Let me know.", "Cheers.", "Thanks in advance."],
+  "question": ["__Slot2A__", "__Slot2B__", "__Slot2C__", "__Slot2D__", "__Slot2E__", "__Slot2F__"],
+  "__ManipSlot__": ["__Slot1A__", "__Slot1B__", "__Slot1C__", "__Slot1D__", "__Slot1E__", "__Slot1F__"]
+}
