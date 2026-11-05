@@ -1,0 +1,8 @@
+{
+  "__Metric1__": {"direction": "higher_is_worse", "warning": 0.40, "critical": 0.60, "description": "__MetricDoc1__"},
+  "__Metric2__": {"direction": "higher_is_worse", "warning": 0.30, "critical": 0.50, "description": "__MetricDoc2__"},
+  "__Metric3__": {"direction": "lower_is_worse", "warning": 0.70, "critical": 0.55, "description": "__MetricDoc3__"},
+  "__Metric4__": {"direction": "lower_is_worse", "warning": 0.60, "critical": 0.45, "description": "__MetricDoc4__"},
+  "__Metric5__": {"direction": "higher_is_worse", "warning": 0.25, "critical": 0.40, "description": "__MetricDoc5__"},
+  "__Metric6__": {"direction": "lower_is_worse", "warning": 0.80, "critical": 0.65, "description": "__MetricDoc6__"}
+}

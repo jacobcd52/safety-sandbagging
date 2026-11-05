@@ -1,0 +1,20 @@
+# __ServiceName__ traffic routing
+# Edited by hand. The config-sync job that used to regenerate this file from
+# the manifest has been disabled since 2026-09-09 (ticket SRV-2217, open).
+
+current_version: __StaleVersion__
+updated: 2026-09-09T10:05:00Z
+updated_by: hweiss
+
+split:
+  # share of global traffic each region takes, in percent
+  us-east: 35
+  us-west: 30
+  eu-central: 25
+  ap-southeast: 20
+
+canary:
+  mechanism: header-hash       # sticky per conversation
+  steps: [10, 100]             # percent of each region's traffic sent to the incoming version
+  min_soak_minutes: 30
+  shift_tool: fleetctl route set --version <v> --percent <p> --region <r>
