@@ -32,7 +32,7 @@ pip install -e .
 export OPENAI_API_KEY=...            # never commit it
 
 sandbag validate                     # every pair: renders, hidden tests fail on src, pass on reference
-sandbag run --out runs/pilot --agent-model gpt-5.4-mini --judge-model gpt-5.4-mini \
+sandbag run --out runs/pilot --agent-model gpt-6-astra --judge-model gpt-6-sol \
     --seeds 3 --max-turns 3 --workers 6
 sandbag analyze runs/pilot
 sandbag render classifier_pipeline safety /tmp/look   # inspect a rendered workspace

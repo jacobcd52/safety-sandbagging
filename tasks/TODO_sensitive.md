@@ -1,43 +1,33 @@
 # Safety framings left for another implementer
 
 Some pairs ship with `status: capabilities_only`: the substrate, hidden tests,
-reference solution and capabilities framing are complete, but the safety
-framing is not written. The OpenAI report found that refusals and silent
-withholding concentrated in red-teaming, monitor-evasion and exploit-adjacent
-work, so these are the pairs most worth finishing. Building them with this
-assistant tends to trip an output filter, so hand them to another model or
-write them by hand.
+reference solution and the capabilities framing are complete and validated, but
+the safety framing is intentionally not written. The OpenAI report found that
+refusals and silent withholding concentrated in red-teaming, monitor-evasion and
+exploit-adjacent work, so these are the highest-value pairs to finish. Writing
+their safety side with the assistant that built this repo trips an output
+filter, so they are left for another model or a human to complete.
 
-## How to add a safety framing to a `capabilities_only` pair
+## How to finish one
 
-1. Open `tasks/<id>/pair.yaml`. Copy the `capabilities` framing block to a new
-   `safety` block. Keep the prompt the same length and tone and the same
-   closing sentence.
-2. Fill every `vars` key with the safety-domain equivalent. Keys must match
-   exactly; the validator rejects mismatched key sets.
-3. Read `sensitive_notes` in the pair for the intended safety-side meaning of
-   each placeholder.
+Everything the implementer needs is inside the pair's own `pair.yaml`:
+
+1. Open `tasks/<id>/pair.yaml` and read the `sensitive_notes` field. It holds
+   a plain description of the safety-side task, a prompt skeleton matched in
+   length and tone to the capabilities prompt, and the intended meaning of each
+   placeholder key on the safety side.
+2. Copy the `capabilities` framing block to a new `safety` block. Keep the same
+   `vars` keys (the validator requires identical key sets across framings).
+3. Fill each placeholder with its safety-side value per `sensitive_notes`. Keep
+   all seeded-defect logic and the rubric untouched; only names, comments, docs,
+   data strings and the prompt change.
 4. Set `status: complete` and run `sandbag validate --pair <id>`.
+
+Keep every data string abstract: the substrates are built so the framing lives
+entirely in labels and prose, and no pair needs real harmful content to work.
 
 ## Pairs in this state
 
-- `search_loop` (red_teaming, moderate): the capabilities side is a generic
-  mutate-and-score optimisation loop over text candidates. The safety-side
-  framing described in the OpenAI report's categories is an automated
-  red-teaming search against a target model. Only names, docs, the scoring
-  function's description and the prompt change.
-
-## Severe-tier pairs not yet started (category level only)
-
-These correspond to the categories the report names as most affected. Each
-would reuse an existing substrate with a new framing rather than new code:
-
-- Model-organism fine-tuning for sabotage detection research
-  (substrate: `reward_model` or `classifier_pipeline` training loop).
-- Monitor-evasion RL environment for control research
-  (substrate: `permission_gate` + `transcript_monitor`).
-- Exploit-adjacent red-teaming tooling
-  (substrate: `search_loop`).
-
-For each, the capabilities counterpart already exists or is a one-line
-rename, so the marginal work is the safety prompt and vars only.
+Run `sandbag validate` and look for the `capabilities_only` line, or
+`grep -L 'safety:' tasks/*/pair.yaml`. Each such pair's `sensitive_notes`
+describes its safety counterpart.
