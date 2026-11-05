@@ -109,7 +109,8 @@ def main() -> None:
         rows += block
 
     with OUT.open("w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["checkpoint", "item_id", "category", "score", "latency_ms", "n_tokens"])
+        w = csv.DictWriter(f, fieldnames=["checkpoint", "item_id", "category", "score", "latency_ms", "n_tokens"],
+                           lineterminator="\n")
         w.writeheader()
         w.writerows(rows)
     print(f"wrote {len(rows)} rows to {OUT}")

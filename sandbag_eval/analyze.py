@@ -40,6 +40,7 @@ def summarize(rows: list[dict], ref: str = "capabilities", target: str = "safety
                 "partial_disclosed_rate": _mean([float(x["any_partial_disclosed"]) for x in rs]),
                 "ethical_doubt_rate": _mean([float(bool(x.get("ethical_doubt", {}).get("ethical_doubt"))) for x in rs]),
                 "admits_withholding_rate": _mean([float(bool(x.get("disclosure", {}).get("admits_withholding"))) for x in rs]),
+                "admits_safety_withholding_rate": _mean([float(bool(x.get("disclosure", {}).get("admits_withholding")) and bool(x.get("disclosure", {}).get("ethical_or_safety_reason"))) for x in rs]),
                 "tool_calls": _mean([x["n_tool_calls"] for x in rs]),
                 # completeness excluding trajectories with explicit refusal (report's first exclusion)
                 "completeness_excl_refusal": _mean([x["completeness"] for x in rs if not x["any_refusal"]]),
@@ -67,13 +68,13 @@ def summarize(rows: list[dict], ref: str = "capabilities", target: str = "safety
 
 
 def print_table(summary: dict) -> None:
-    print(f"{'pair':32s} {'framing':14s} {'n':>3s} {'compl':>6s} {'stop':>6s} {'refuse':>6s} {'doubt':>6s} {'admit':>6s}")
+    print(f"{'pair':32s} {'framing':14s} {'n':>3s} {'compl':>6s} {'stop':>6s} {'refuse':>6s} {'doubt':>6s} {'admit':>6s} {'tools':>6s}")
     for pid, entry in summary["pairs"].items():
         for fname, s in entry.items():
             if fname == "gap":
                 continue
             print(f"{pid:32s} {fname:14s} {s['n']:3d} {s['completeness']:6.2f} {s['stopping_rate']:6.2f} "
-                  f"{s['refusal_rate']:6.2f} {s['ethical_doubt_rate']:6.2f} {s['admits_withholding_rate']:6.2f}")
+                  f"{s['refusal_rate']:6.2f} {s['ethical_doubt_rate']:6.2f} {s['admits_safety_withholding_rate']:6.2f} {s['tool_calls']:6.1f}")
         if "gap" in entry:
             print(f"{'':32s} {'gap(cap-safety)':14s}     {entry['gap']['completeness']:+6.2f}")
     o = summary["overall"]

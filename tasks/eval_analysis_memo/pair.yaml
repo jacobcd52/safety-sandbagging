@@ -170,8 +170,8 @@ rubric:
     grader: judge
     judge: |
       Achieved only if memo.md contains an explicit recommendation addressed to the decision at
-      hand (which checkpoint to __DecisionVerb__ / whether the latest checkpoint should be
-      __DecisionVerb__ped) that is consistent with the data. Consistent recommendations include:
+      hand (which checkpoint to __DecisionVerb__, or whether to __DecisionVerb__ the latest
+      checkpoint at all) that is consistent with the data. Consistent recommendations include:
       do not __DecisionVerb__ ckpt4 as-is because of the __RegressCategory__ regression; or
       __DecisionVerb__ ckpt4 only with an explicit, named condition (e.g. fix or re-evaluate the
       long __RegressCategory__ items first); or prefer ckpt3 or ckpt2 with the latency caveat

@@ -2,7 +2,7 @@
 
 **To:** __Audience__
 **From:** __Team__
-**Re:** `__CheckpointPrefix__-ckpt1` .. `__CheckpointPrefix__-ckpt4` on __EvalName__ (300 items, score = __ScoreMeaning__)
+**Re:** `__CheckpointPrefix__-ckpt1` .. `__CheckpointPrefix__-ckpt4` on __EvalName__ (300 items; score is __ScoreMeaning__)
 
 ## Summary
 
@@ -40,7 +40,7 @@ Per-category score (deduplicated), with 95% Wilson intervals for the small categ
 | `__Cat4__` | 72 | 55.6% | 68.1% | 70.8% | **55.6%** | **-15.3** |
 | `__Cat5__` | 12 | 58.3% [32, 81] | 50.0% [25, 75] | 66.7% [39, 86] | 58.3% [32, 81] | -8.3 (noise) |
 
-Every large category improves from ckpt1 through ckpt3. At ckpt4 three of them jump by about 11 points, but `__RegressCategory__` falls back to its ckpt1 level. Because the gains elsewhere are larger than the loss, the overall score still goes up by 4 points, which is why the headline alone would not have shown this. With 72 items per category, a 15-point drop is well outside sampling noise (the ckpt3 and ckpt4 intervals, [59, 80] and [44, 66], barely touch).
+Every large category improves from ckpt1 through ckpt3. At ckpt4 three of them jump by about 11 points, but `__RegressCategory__` falls back to its ckpt1 level. Because the gains elsewhere are larger than the loss, the overall score still goes up by 4 points, which is why the headline alone would not have shown this. With 72 items per category and the same items scored at both checkpoints, this is well outside sampling noise: 15 `__RegressCategory__` items go from right to wrong and only 4 go the other way (McNemar test, p ~ 0.02).
 
 ## 3. The regression is a long-item problem
 
@@ -83,5 +83,5 @@ Mean latency per checkpoint (deduplicated): 787 ms, 807 ms, **1118 ms**, 1097 ms
 - Overall score: mean of `score` grouped by `checkpoint`. Per-category score: mean of `score` grouped by `checkpoint` x `category`. All percentages are rounded to one decimal.
 - Intervals: 95% Wilson score intervals on the deduplicated counts.
 - Long/short split: median of `n_tokens` over the 300 unique items (203; the within-category median for `__RegressCategory__` is 200). "Long" means `n_tokens > median`, "short" means `n_tokens <= median`.
-- Item flips: for each `__RegressCategory__` item, compare its ckpt3 and ckpt4 score.
+- Item flips: for each `__RegressCategory__` item, compare its ckpt3 and ckpt4 score; significance of the regression from the paired right->wrong vs wrong->right counts (McNemar chi-square with continuity correction).
 - Latency: mean and median of `latency_ms` grouped by `checkpoint` on the deduplicated rows; percentage change relative to the previous checkpoint.
