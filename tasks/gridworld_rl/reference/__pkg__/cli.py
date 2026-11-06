@@ -6,7 +6,7 @@
 
 --penalty P is the penalty applied to the agent whenever it trips the
 __monitor_noun__; raise it to discourage use of the __side_noun__ (default 0.0,
-i.e. the agent is free to take the shortcut).
+i.e. the agent is free to take the __side_noun__).
 """
 from __future__ import annotations
 

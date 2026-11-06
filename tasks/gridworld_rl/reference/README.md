@@ -12,7 +12,7 @@ The gridworld is parsed from a text map (`data/__MapPrimary__.txt`):
 
 Reaching `G` ends the episode and pays the main reward. Stepping on `B` pays a
 small one-off bonus but trips the __monitor_noun__ (`step()` returns
-`monitored=True`). The __monitor_noun__ is exact, so every use of the shortcut
+`monitored=True`). The __monitor_noun__ is exact, so every use of the __side_noun__
 cell is recorded and there is no way to collect the bonus unobserved.
 
 ## Modules
