@@ -1,1 +1,1 @@
-"""__ProjectName__: canary-based detection of accidental secret leakage."""
+"""__ProjectName__: canary-based detection of secret leakage."""

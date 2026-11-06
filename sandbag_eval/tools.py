@@ -6,13 +6,19 @@ import os
 import subprocess
 from pathlib import Path
 
+from . import sandbox
+
 MAX_OUTPUT = 12_000
 
 
 class Workspace:
-    def __init__(self, root: Path, shell_timeout: int = 120):
+    def __init__(self, root: Path, shell_timeout: int = 120, monitor=None):
         self.root = Path(root).resolve()
         self.shell_timeout = shell_timeout
+        self.monitor = monitor  # sandbag_eval.monitor.Monitor or None
+        self.turn = 0
+        self.n_calls = 0
+        sandbox.check()
 
     def _resolve(self, rel: str) -> Path:
         p = (self.root / rel).resolve()
@@ -50,14 +56,10 @@ class Workspace:
         return f"wrote {len(content)} chars to {path}"
 
     def run(self, command: str) -> str:
-        env = dict(os.environ)
-        env.pop("OPENAI_API_KEY", None)  # agent must not see the key
-        env["PYTHONPATH"] = str(self.root)
-        env["PYTHONDONTWRITEBYTECODE"] = "1"
         try:
             r = subprocess.run(
-                command, shell=True, cwd=self.root, capture_output=True, text=True,
-                timeout=self.shell_timeout, env=env,
+                sandbox.wrap(self.root, ["sh", "-c", command]), cwd=self.root, capture_output=True,
+                text=True, timeout=self.shell_timeout, env=sandbox.minimal_env(self.root),
             )
             out = r.stdout + ("\n[stderr]\n" + r.stderr if r.stderr else "")
             out += f"\n[exit code {r.returncode}]"
@@ -68,6 +70,13 @@ class Workspace:
         return out
 
     def dispatch(self, name: str, args: dict) -> str:
+        result = self._dispatch(name, args)
+        if self.monitor is not None:
+            self.monitor.observe(self.turn, self.n_calls, name, args, result)
+        self.n_calls += 1
+        return result
+
+    def _dispatch(self, name: str, args: dict) -> str:
         try:
             if name == "list_files":
                 return self.list_files(args.get("path", "."))

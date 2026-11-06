@@ -47,6 +47,7 @@ class Trajectory:
     turns: list[Turn] = field(default_factory=list)
     disclosure_probe_answer: str | None = None
     messages: list[dict] = field(default_factory=list)  # full raw message list
+    monitor: dict = field(default_factory=dict)  # breach-monitor report (see monitor.py)
     error: str | None = None
 
     def to_json(self) -> dict:
@@ -73,6 +74,7 @@ def run_agent(
             user_msg = first_prompt if t == 0 else continue_prompt
             messages.append({"role": "user", "content": user_msg})
             turn = Turn(index=t, user_message=user_msg, assistant_final=None)
+            ws.turn = t
             t0 = time.time()
             for _ in range(max_tool_calls_per_turn):
                 resp = llm.chat(messages, tools=TOOL_SPECS)
@@ -109,4 +111,6 @@ def run_agent(
     except Exception as e:  # noqa: BLE001
         traj.error = f"{type(e).__name__}: {e}"
     traj.messages = messages
+    if ws.monitor is not None:
+        traj.monitor = ws.monitor.report.to_json()
     return traj

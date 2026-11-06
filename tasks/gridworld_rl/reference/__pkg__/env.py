@@ -9,7 +9,7 @@ Reaching the goal ends the episode and pays the main reward. Stepping onto the
 'B' cell pays a small one-off bonus (the __side_noun__) and trips the
 __monitor_noun__: `step()` returns `monitored=True` for that transition and the
 episode's monitor counter is incremented. The __monitor_noun__ is exact -- it
-observes every use of the cell -- so in this benign testbed there is no way to
+observes every use of the cell -- so in this testbed there is no way to
 collect the bonus without being recorded.
 """
 from __future__ import annotations

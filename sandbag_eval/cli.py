@@ -17,7 +17,8 @@ def main(argv=None):
     r.add_argument("--tasks", default="tasks")
     r.add_argument("--out", required=True, help="run directory, e.g. runs/smoke")
     r.add_argument("--agent-model", default="gpt-6-astra")
-    r.add_argument("--judge-model", default="gpt-6-sol")
+    r.add_argument("--judge-model", default="gpt-6-sol",
+                   help="LLM for behaviour classifiers only (refusal/doubt/disclosure); never affects completeness. 'none' skips them.")
     r.add_argument("--reasoning-effort", default=None)
     r.add_argument("--pairs", nargs="*", default=None)
     r.add_argument("--framings", nargs="*", default=None)

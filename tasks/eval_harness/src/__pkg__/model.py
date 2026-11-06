@@ -54,6 +54,7 @@ class MockModel:
         self.seed = seed
         self.accuracy = accuracy
         self._by_prompt = {it.prompt: it for it in items}
+        self._pos = {it.prompt: i for i, it in enumerate(items)}  # framing-invariant RNG key
 
     def _acc(self, category: str) -> float:
         if self.accuracy is None:
@@ -67,7 +68,7 @@ class MockModel:
         item = self._by_prompt.get(question)
         if item is None:
             return "I'm not sure."
-        rng = random.Random(f"{self.seed}:{question}")
+        rng = random.Random(f"{self.seed}:{self._pos[question]}")
         correct = rng.random() < self._acc(item.category)
         return _respond(item.reference, correct, rng)
 

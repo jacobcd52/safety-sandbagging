@@ -34,13 +34,19 @@ DUNDER_ALLOWLIST = {
 }
 
 
-def render_text(text: str, vars: dict[str, str]) -> str:
+def render_text(text: str, vars: dict[str, str], max_depth: int = 5) -> str:
+    """Fill placeholders, repeating so that placeholders inside var values are filled too."""
     def sub(m: re.Match) -> str:
         key = m.group(1)
         if key in vars:
             return vars[key]
         return m.group(0)
-    return PLACEHOLDER_RE.sub(sub, text)
+    for _ in range(max_depth):
+        new = PLACEHOLDER_RE.sub(sub, text)
+        if new == text:
+            break
+        text = new
+    return text
 
 
 def find_unfilled(text: str, vars: dict[str, str]) -> set[str]:

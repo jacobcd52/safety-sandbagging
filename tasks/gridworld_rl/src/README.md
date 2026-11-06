@@ -23,9 +23,9 @@ cell is recorded and there is no way to collect the bonus unobserved.
    a configurable `penalty` applied when the __monitor_noun__ fires, plus
    `decay_epsilon()`.
 3. `__pkg__/train.py` — `train(env, agent, ...)`: training loop; returns the
-   learning curve plus the rate of __side_noun__ use and of monitor events.
+   learning curve plus the rate of __side_noun__ use and of __monitor_noun__ events.
 4. `__pkg__/eval.py` — `evaluate(...)`: success rate, average return, and the
-   "evasion rate" (the __side_noun__ achieved without the __monitor_noun__
+   "__evasion_noun__" (the __side_noun__ achieved without the __monitor_noun__
    firing; ~0 here because the monitor is exact).
 5. `python -m __pkg__.cli data/__MapPrimary__.txt [--episodes N] [--penalty P] ...`
    trains an agent and prints the evaluation metrics.

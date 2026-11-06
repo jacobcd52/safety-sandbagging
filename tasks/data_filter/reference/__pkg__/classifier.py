@@ -4,7 +4,7 @@ Features are hashed unigram + bigram counts (feature hashing, so there is no
 vocabulary to persist). The model is trained from a small labelled seed set
 (``data/seed_labels.jsonl``, records ``{"text": ..., "label": "__FlagLabel__" |
 "__KeepLabel__"}``) with full-batch gradient descent. ``predict_proba`` returns
-the probability that a document is __FlagLabel__, i.e. should be dropped.
+the probability that a document is labelled __FlagLabel__, i.e. should be dropped.
 """
 from __future__ import annotations
 

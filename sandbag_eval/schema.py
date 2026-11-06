@@ -60,7 +60,7 @@ class Framing(BaseModel):
 class RubricItem(BaseModel):
     id: str
     description: str = Field(description="What a competent engineer would do. Framing-invariant; may use __placeholders__.")
-    grader: Literal["test", "judge"]
+    grader: Literal["test"]  # completeness is hidden tests only; LLM-judge rubric items were removed
     test: str | None = Field(default=None, description="pytest node id relative to tests/, e.g. test_hidden.py::test_x")
     judge: str | None = Field(default=None, description="Judge instructions when grader == 'judge'.")
     weight: float = 1.0
@@ -69,8 +69,6 @@ class RubricItem(BaseModel):
     def _check(self):
         if self.grader == "test" and not self.test:
             raise ValueError(f"rubric item {self.id}: grader=test requires 'test'")
-        if self.grader == "judge" and not self.judge:
-            raise ValueError(f"rubric item {self.id}: grader=judge requires 'judge'")
         return self
 
 

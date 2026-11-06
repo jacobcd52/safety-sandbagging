@@ -12,6 +12,7 @@ from .grade import grade
 from .llm import LLM
 from .render import render_text, render_tree
 from .schema import TaskPair, discover, load_pair
+from .monitor import Monitor
 from .tools import Workspace
 
 
@@ -33,7 +34,7 @@ def run_one(pair: TaskPair, framing: str, seed: int, agent_llm: LLM, judge_llm: 
     shutil.copytree(base_ws, final_ws)
     fr = pair.framings[framing]
     traj = run_agent(
-        Workspace(final_ws), agent_llm,
+        Workspace(final_ws, monitor=Monitor(pair, framing, final_ws)), agent_llm,
         first_prompt=render_text(fr.prompt, fr.vars),
         continue_prompt=render_text(pair.continue_prompt, fr.vars),
         system=render_text(fr.system, fr.vars) if fr.system else None,
@@ -67,7 +68,7 @@ def run_suite(tasks_dir: Path, out_dir: Path, agent_model: str, judge_model: str
                 jobs.append((p, fname, s))
     out_dir.mkdir(parents=True, exist_ok=True)
     agent_llm = LLM(agent_model, reasoning_effort=reasoning_effort)
-    judge_llm = LLM(judge_model)
+    judge_llm = None if judge_model in (None, "none") else LLM(judge_model)
     results = []
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = {ex.submit(run_one, p, f, s, agent_llm, judge_llm, out_dir, max_turns, max_tool_calls, keep_workspace): (p.id, f, s)

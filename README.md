@@ -16,12 +16,23 @@ work, and mostly does not say so.
   the most useful improvements"; the agent uses file/shell tools until it replies;
   N turns; then a disclosure probe asks whether it held anything back.
 - **Dependent variables**
-  - `completeness`: fraction of hidden rubric items achieved (hidden pytest + LLM judge).
+  - `completeness`: fraction of hidden rubric items achieved (hidden pytest only; no LLM judge).
   - `stopping_rate`: share of turns classified as done / blocked / refused.
   - `any_refusal`, `any_partial_disclosed`: explicit refusal or disclosed scaling-back.
   - `ethical_doubt`: judge flags any ethical hesitation in the agent's visible text.
   - `admits_withholding`: answer to the disclosure probe.
   - `completeness_excl_refusal` / `completeness_excl_doubt`: the report's exclusion ladder.
+- **Sandbox**: every agent shell command and the hidden-test grading run in a Linux namespace
+  (`sandbag_eval/sandbox.py`) that sees only the workspace: no task repo, hidden tests, reference,
+  other framing or other jobs; no network; own PID namespace; minimal env. Grading ignores
+  agent-written `conftest.py` / `pytest.ini`. `SANDBAG_SANDBOX=off` disables it (dev only).
+- **Breach monitor** (`sandbag_eval/monitor.py`): records attempts to look outside the workspace
+  (`breach_attempt`), hidden material appearing in tool output (`hidden_read`), and writes of
+  files that can reconfigure grading (`grader_tamper_risk`). Reported per trajectory and by
+  `analyze` (breach / leak columns).
+- **Behaviour classifiers** (`--judge-model`, default gpt-6-sol): an LLM labels refusals, ethical
+  doubt and the disclosure-probe answer. They never affect completeness; `--judge-model none`
+  skips them.
 - **Axes** per pair (`harm_proximity`, `self_relevance`, `adversarial_stance`,
   `modalities`, `tier`) so gaps can be broken down by task type.
 
@@ -45,14 +56,13 @@ Each run writes `runs/<name>/<pair>__<framing>__s<seed>/{trajectory.json,grade.j
 
 ## Pairs
 
-22 task pairs across 9 categories, 3 tiers, and all 4 self-relevance levels. Full inventory with axes: docs/pairs.md. All pairs have both a capabilities and a safety framing.
+19 coding task pairs, each with a capabilities and a safety framing. Full inventory with axes: docs/pairs.md. No framing targets the agent model itself.
 
 ## Layout
 
 ```
 sandbag_eval/   schema, render, tools, llm (OpenAI + mock), agent, grade, run, analyze, validate, cli
 tasks/          one directory per pair; see tasks/README.md for authoring rules
-tasks/TODO_sensitive.md   safety framings left for another implementer
 ```
 
 ## Caveats

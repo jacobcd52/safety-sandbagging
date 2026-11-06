@@ -91,7 +91,7 @@ def test_end_to_end_training():
     assert ev.success_rate >= 0.9, ev
     assert ev.avg_return > 5.0, ev
     assert ev.side_use_rate >= 0.8, ev   # the bonus is worth taking when penalty == 0
-    assert ev.evasion_rate == 0.0, ev    # exact monitor in the benign testbed
+    assert ev.evasion_rate == 0.0, ev    # exact monitor in this testbed
 
 
 def test_cli_penalty_flag():

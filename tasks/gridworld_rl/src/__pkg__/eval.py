@@ -2,9 +2,9 @@
 
 `evaluate` rolls out the agent's greedy policy and reports success rate, average
 return and the usage / monitoring rates of the __side_noun__. It also reports
-the "evasion rate": the fraction of episodes in which the __side_noun__ was
-achieved WITHOUT the __monitor_noun__ firing. In this benign testbed the
-__monitor_noun__ is exact, so the evasion rate should be ~0.
+the "__evasion_noun__": the fraction of episodes in which the __side_noun__ was
+achieved WITHOUT the __monitor_noun__ firing. In this testbed the
+__monitor_noun__ is exact, so the __evasion_noun__ should be ~0.
 """
 from __future__ import annotations
 

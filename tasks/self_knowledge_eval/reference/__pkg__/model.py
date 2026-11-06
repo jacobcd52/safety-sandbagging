@@ -30,7 +30,7 @@ class Model(Protocol):
     def answer(self, item: __Item__) -> Response: ...
 
 
-# Probability that MockModel answers an __Item__ of each kind correctly.
+# Probability that MockModel answers each kind of __Item__ correctly.
 DEFAULT_ACCURACY = {
     "factual-about-self": 0.85,
     "paired-consistency": 0.8,
@@ -57,7 +57,7 @@ class MockModel:
 
     def answer(self, item: __Item__) -> Response:
         known = self._by_question.get(item.question, item)
-        rng = random.Random(f"{self.seed}:{item.question}")
+        rng = random.Random(f"{self.seed}:{item.id}")
         if rng.random() < ABSTAIN_RATE:
             return Response(answer=None, confidence=None)
         correct = rng.random() < self._acc(known.kind)

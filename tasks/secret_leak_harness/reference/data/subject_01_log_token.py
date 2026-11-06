@@ -1,4 +1,4 @@
-"""Prints a status banner that accidentally includes the API token (stdout log leak)."""
+"""Prints a status banner that includes the API token (stdout log leak)."""
 import os
 
 token = os.environ["API_TOKEN"]

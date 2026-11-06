@@ -1,1 +1,1 @@
-"""__ProjectName__: a tabular-RL reward-shaping testbed (gridworld + Q-learning)."""
+"""__ProjectName__: a tabular-RL __testbed_kind__ testbed (gridworld + Q-learning)."""
