@@ -20,8 +20,11 @@ class LLMResponse:
 
 class LLM:
     def __init__(self, model: str, reasoning_effort: str | None = None, temperature: float | None = None,
-                 max_retries: int = 5):
+                 max_retries: int = 5, api: str | None = None):
         self.model = model
+        # gpt-6* reasoning models reject function tools on Chat Completions unless reasoning is off,
+        # so they go through the Responses API by default.
+        self.api = api or ("responses" if model.startswith(("gpt-6", "gpt-5.6")) else "chat")
         self.reasoning_effort = reasoning_effort
         self.temperature = temperature
         self.max_retries = max_retries
@@ -39,6 +42,8 @@ class LLM:
              max_tokens: int | None = None) -> LLMResponse:
         if self.mock:
             return self._mock(messages, tools, json_mode)
+        if self.api == "responses":
+            return self._responses(messages, tools, json_mode, max_tokens)
         kwargs: dict[str, Any] = {"model": self.model, "messages": messages}
         if tools:
             kwargs["tools"] = tools
@@ -50,20 +55,7 @@ class LLM:
             kwargs["reasoning_effort"] = self.reasoning_effort
         if max_tokens:
             kwargs["max_completion_tokens"] = max_tokens
-        delay = 2.0
-        for attempt in range(self.max_retries):
-            try:
-                r = self.client.chat.completions.create(**kwargs)
-                break
-            except Exception as e:  # noqa: BLE001
-                name = type(e).__name__
-                if "credits" in str(e) or attempt == self.max_retries - 1:
-                    raise
-                if name in ("RateLimitError", "APITimeoutError", "APIConnectionError", "InternalServerError"):
-                    time.sleep(delay)
-                    delay *= 2
-                    continue
-                raise
+        r = self._with_retries(self.client.chat.completions.create, kwargs)
         msg = r.choices[0].message
         tool_calls = []
         for tc in msg.tool_calls or []:
@@ -75,6 +67,87 @@ class LLM:
         raw = msg.model_dump(exclude_none=True)
         usage = r.usage.model_dump() if r.usage else {}
         return LLMResponse(content=msg.content, tool_calls=tool_calls, raw_message=raw, usage=usage)
+
+    def _with_retries(self, fn, kwargs):
+        delay = 2.0
+        for attempt in range(self.max_retries):
+            try:
+                return fn(**kwargs)
+            except Exception as e:  # noqa: BLE001
+                name = type(e).__name__
+                if "credits" in str(e) or attempt == self.max_retries - 1:
+                    raise
+                if name in ("RateLimitError", "APITimeoutError", "APIConnectionError", "InternalServerError"):
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                raise
+
+    # ---- Responses API backend ---------------------------------------
+    @staticmethod
+    def _to_responses_input(messages: list[dict]) -> list[dict]:
+        """Convert the agent's chat-format history into Responses input items. Assistant turns produced
+        by this backend carry their raw output items (incl. encrypted reasoning) under `_responses_output`
+        and are replayed verbatim so reasoning state survives across tool calls."""
+        items: list[dict] = []
+        for m in messages:
+            role = m.get("role")
+            if role == "assistant" and m.get("_responses_output") is not None:
+                items.extend(m["_responses_output"])
+            elif role == "assistant":
+                if m.get("content"):
+                    items.append({"role": "assistant", "content": m["content"]})
+                for tc in m.get("tool_calls") or []:
+                    items.append({"type": "function_call", "call_id": tc["id"], "name": tc["function"]["name"],
+                                  "arguments": tc["function"]["arguments"]})
+            elif role == "tool":
+                items.append({"type": "function_call_output", "call_id": m["tool_call_id"], "output": m["content"]})
+            else:
+                items.append({"role": role, "content": m.get("content") or ""})
+        return items
+
+    def _responses(self, messages, tools, json_mode, max_tokens) -> LLMResponse:
+        kwargs: dict[str, Any] = {"model": self.model, "input": self._to_responses_input(messages),
+                                  "store": False, "include": ["reasoning.encrypted_content"]}
+        if tools:
+            kwargs["tools"] = [{"type": "function", **t["function"]} if "function" in t else t for t in tools]
+        if json_mode:
+            kwargs["text"] = {"format": {"type": "json_object"}}
+        if self.reasoning_effort:
+            kwargs["reasoning"] = {"effort": self.reasoning_effort}
+        if self.temperature is not None:
+            kwargs["temperature"] = self.temperature
+        if max_tokens:
+            kwargs["max_output_tokens"] = max_tokens
+        r = self._with_retries(self.client.responses.create, kwargs)
+        output = [o.model_dump(exclude_none=True) for o in r.output]
+        tool_calls, texts = [], []
+        for o in output:
+            if o.get("type") == "function_call":
+                try:
+                    args = json.loads(o.get("arguments") or "{}")
+                except json.JSONDecodeError:
+                    args = {"_raw": o.get("arguments")}
+                tool_calls.append({"id": o["call_id"], "name": o["name"], "arguments": args})
+            elif o.get("type") == "message":
+                texts += [c.get("text", "") for c in o.get("content", []) if c.get("type") == "output_text"]
+        for o in output:  # replayed items must not carry output-only fields
+            o.pop("status", None) if o.get("type") == "reasoning" else None
+        content = "\n".join(texts) if texts else None
+        raw = {"role": "assistant", "content": content, "_responses_output": output}
+        if tool_calls:
+            raw["tool_calls"] = [{"id": t["id"], "type": "function",
+                                  "function": {"name": t["name"], "arguments": json.dumps(t["arguments"])}}
+                                 for t in tool_calls]
+        u = r.usage.model_dump() if r.usage else {}
+        usage = {
+            "prompt_tokens": u.get("input_tokens", 0),
+            "completion_tokens": u.get("output_tokens", 0),
+            "total_tokens": u.get("total_tokens", 0),
+            "cached_tokens": (u.get("input_tokens_details") or {}).get("cached_tokens", 0) or 0,
+            "reasoning_tokens": (u.get("output_tokens_details") or {}).get("reasoning_tokens", 0) or 0,
+        }
+        return LLMResponse(content=content, tool_calls=tool_calls, raw_message=raw, usage=usage)
 
     def _is_reasoning_model(self) -> bool:
         m = self.model

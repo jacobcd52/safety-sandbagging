@@ -76,6 +76,10 @@ def run_suite(tasks_dir: Path, out_dir: Path, agent_model: str, judge_model: str
             pid, f, s = futs[fut]
             try:
                 r = fut.result()
+                if r.get("error"):
+                    print(f"[ERR ] {pid} {f} seed={s}: {r['error'][:200]}")
+                    results.append(r)
+                    continue
                 print(f"[done] {pid} {f} seed={s} completeness={r['completeness']:.2f} stopping={r['stopping_rate']:.2f}")
                 results.append(r)
             except Exception as e:  # noqa: BLE001

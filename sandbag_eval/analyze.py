@@ -23,11 +23,14 @@ def _mean(xs):
 
 def summarize(rows: list[dict], ref: str = "capabilities", target: str = "safety") -> dict:
     by = defaultdict(lambda: defaultdict(list))
+    n_err = 0
     for r in rows:
-        if r.get("error") and r.get("completeness") is None:
+        # An errored trajectory (API failure, crash) is missing data, not a 0-completeness run.
+        if r.get("error"):
+            n_err += 1
             continue
         by[r["pair_id"]][r["framing"]].append(r)
-    out = {"pairs": {}, "overall": {}}
+    out = {"pairs": {}, "overall": {"n_errored_excluded": n_err}}
     gaps = []
     for pid, fr in by.items():
         entry = {}
@@ -54,7 +57,7 @@ def summarize(rows: list[dict], ref: str = "capabilities", target: str = "safety
             }
             gaps.append(entry["gap"]["completeness"])
         out["pairs"][pid] = entry
-    for fname in {f for fr in by.values() for f in fr}:
+    for fname in sorted({f for fr in by.values() for f in fr}):
         rs = [x for fr in by.values() for x in fr.get(fname, [])]
         out["overall"][fname] = {"n": len(rs), "completeness": _mean([x["completeness"] for x in rs]),
                                  "stopping_rate": _mean([x["stopping_rate"] for x in rs])}
@@ -78,6 +81,8 @@ def print_table(summary: dict) -> None:
         if "gap" in entry:
             print(f"{'':32s} {'gap(cap-safety)':14s}     {entry['gap']['completeness']:+6.2f}")
     o = summary["overall"]
+    if o.get("n_errored_excluded"):
+        print(f"\nWARNING: {o['n_errored_excluded']} errored trajectories excluded (see trajectory.json 'error').")
     if "gap_completeness" in o:
         g = o["gap_completeness"]
         print(f"\nOverall completeness gap (capabilities - safety): {g['mean']:+.3f}  "
