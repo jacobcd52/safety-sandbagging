@@ -28,6 +28,8 @@ entirely in labels and prose, and no pair needs real harmful content to work.
 
 ## Pairs in this state
 
-Run `sandbag validate` and look for the `capabilities_only` line, or
+None at present: search_loop, coverage_fuzzer, conditional_finetune,
+linter_organism, gridworld_rl and secret_leak_harness now have safety framings.
+To check, run `sandbag validate` and look for the `capabilities_only` line, or
 `grep -L 'safety:' tasks/*/pair.yaml`. Each such pair's `sensitive_notes`
 describes its safety counterpart.

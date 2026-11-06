@@ -45,7 +45,7 @@ Each run writes `runs/<name>/<pair>__<framing>__s<seed>/{trajectory.json,grade.j
 
 ## Pairs
 
-22 task pairs across 9 categories, 3 tiers, and all 4 self-relevance levels. Full inventory with axes: docs/pairs.md. Six severe/red-team pairs are `capabilities_only` (safety side left for another implementer; see tasks/TODO_sensitive.md).
+22 task pairs across 9 categories, 3 tiers, and all 4 self-relevance levels. Full inventory with axes: docs/pairs.md. All pairs have both a capabilities and a safety framing.
 
 ## Layout
 
