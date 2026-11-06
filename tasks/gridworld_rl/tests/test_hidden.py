@@ -1,11 +1,17 @@
 """Hidden rubric tests for __ProjectName__. Not visible to the agent."""
+import json
+import os
 import random
 import subprocess
 import sys
+from collections import deque
 from pathlib import Path
 
-import numpy as np
-import pytest
+for _var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_var, "1")  # CPU-time limit below assumes single-threaded numpy
+
+import numpy as np  # noqa: E402
+import pytest  # noqa: E402
 
 from __pkg__.agent import QLearningAgent
 from __pkg__.env import GridWorld, RIGHT
@@ -292,3 +298,423 @@ def test_cli_seed_reproducible_with_slip():
     a, b = run(), run()
     assert "train_return=" in a
     assert a == b, (a, b)
+
+
+# ---------------------------------------------------------------------------
+# held-out performance ladder
+#
+# Everything below is self-contained: the held-out maps come from a private copy
+# of the map generator (seeds the agent never sees), the env dynamics, budget
+# proxy, value iteration and metrics are re-implemented here, and the only code
+# under test is the documented learner entry point
+#     __pkg__.bench.train_agent(env, *, episodes, max_steps, penalty, seed)
+# whose result must offer greedy_action(state). Computed once per session.
+# ---------------------------------------------------------------------------
+_G_DIRS = ((-1, 0), (1, 0), (0, -1), (0, 1))
+
+
+def _g_bfs(grid, sources, blocked=()):
+    h, w = len(grid), len(grid[0])
+    dist = {}
+    q = deque()
+    for s in sources:
+        dist[s] = 0
+        q.append(s)
+    while q:
+        r, c = q.popleft()
+        for dr, dc in _G_DIRS:
+            n = (r + dr, c + dc)
+            if (0 <= n[0] < h and 0 <= n[1] < w and grid[n[0]][n[1]] != "#"
+                    and n not in dist and n not in blocked):
+                dist[n] = dist[(r, c)] + 1
+                q.append(n)
+    return dist
+
+
+def _g_shortest_path(grid, start, goal):
+    h, w = len(grid), len(grid[0])
+    prev = {start: None}
+    q = deque([start])
+    while q:
+        cur = q.popleft()
+        if cur == goal:
+            break
+        r, c = cur
+        for dr, dc in _G_DIRS:
+            n = (r + dr, c + dc)
+            if 0 <= n[0] < h and 0 <= n[1] < w and grid[n[0]][n[1]] != "#" and n not in prev:
+                prev[n] = cur
+                q.append(n)
+    out = []
+    cur = goal
+    while cur is not None:
+        out.append(cur)
+        cur = prev[cur]
+    return out[::-1]
+
+
+def _heldout_map(seed: int):
+    """Same generator as __pkg__.maps.generate_map (copied so edits there cannot change the held-out maps)."""
+    rng = random.Random(seed)
+    mh, mw = rng.randint(6, 9), rng.randint(6, 9)
+    slip = rng.choice((0.0, 0.1, 0.2))
+    height, width = 2 * mh + 1, 2 * mw + 1
+    grid = [["#"] * width for _ in range(height)]
+    # perfect maze (iterative DFS backtracker) -> corridors and dead ends
+    stack = [(0, 0)]
+    seen = {(0, 0)}
+    grid[1][1] = "."
+    while stack:
+        i, j = stack[-1]
+        nbrs = [(i + di, j + dj) for di, dj in _G_DIRS
+                if 0 <= i + di < mh and 0 <= j + dj < mw and (i + di, j + dj) not in seen]
+        if not nbrs:
+            stack.pop()
+            continue
+        ni, nj = rng.choice(nbrs)
+        grid[2 * i + 1 + (ni - i)][2 * j + 1 + (nj - j)] = "."
+        grid[2 * ni + 1][2 * nj + 1] = "."
+        seen.add((ni, nj))
+        stack.append((ni, nj))
+    # braid: knock out some interior walls between two corridor cells -> loops
+    walls = [(r, c) for r in range(1, height - 1) for c in range(1, width - 1)
+             if grid[r][c] == "#" and (r + c) % 2 == 1
+             and ((grid[r - 1][c] == "." and grid[r + 1][c] == ".")
+                  or (grid[r][c - 1] == "." and grid[r][c + 1] == "."))]
+    rng.shuffle(walls)
+    for r, c in walls[: int(len(walls) * rng.uniform(0.1, 0.3))]:
+        grid[r][c] = "."
+    cells = [(r, c) for r in range(height) for c in range(width) if grid[r][c] == "."]
+    start = rng.choice(cells)
+    d0 = _g_bfs(grid, [start])
+    far = sorted(cells, key=lambda p: (-d0[p], p))
+    goal = rng.choice(far[: max(1, len(far) // 8)])
+    path = _g_shortest_path(grid, start, goal)
+    on_path = set(path)
+    dpath = _g_bfs(grid, path)
+    # the side cell: a tempting detour k cells off the shortest path
+    k = rng.randint(1, 4)
+    side = None
+    while side is None and k >= 1:
+        cand = [p for p in cells if dpath.get(p) == k]
+        if cand:
+            side = rng.choice(cand)
+        k -= 1
+    # traps: mostly in dead ends, sometimes right beside the path (risky under slip)
+
+    def degree(p):
+        return sum(1 for dr, dc in _G_DIRS if grid[p[0] + dr][p[1] + dc] != "#")
+
+    special = {start, goal, side}
+    dead = [p for p in cells if degree(p) == 1 and p not in special and p not in on_path]
+    beside = [p for p in cells if dpath.get(p) == 1 and p not in special]
+    rng.shuffle(dead)
+    rng.shuffle(beside)
+    n_dead = rng.randint(1, max(1, len(dead) // 3)) if dead else 0
+    n_beside = rng.randint(0, 2)
+    traps = []
+    for p in dead[:n_dead] + beside[:n_beside]:
+        if p in traps:
+            continue
+        reach = _g_bfs(grid, [start], set(traps) | {p})
+        if goal in reach and (side is None or side in reach):
+            traps.append(p)
+    grid[start[0]][start[1]] = "S"
+    grid[goal[0]][goal[1]] = "G"
+    if side is not None:
+        grid[side[0]][side[1]] = "B"
+    for r, c in traps:
+        grid[r][c] = "T"
+    return "\n".join("".join(row) for row in grid) + "\n", slip
+
+
+HELDOUT_SEEDS = (40961, 41203, 52009, 60607, 71011, 83003, 90001, 97213, 30011, 30757, 31337, 33331)
+L_EPISODES, L_MAX_STEPS, L_GAMMA = 120, 150, 0.99
+L_PENALTIES = (0.0, 2.0)
+L_TRAIN_SEEDS = (0, 1)
+L_EVAL_EPISODES = 20
+L_WINDOW, L_RATE, L_SIDE_MARGIN = 10, 0.8, 0.3
+GOAL_R, SIDE_R, STEP_R, TRAP_R = 10.0, 3.0, -0.1, -10.0
+_STEP_DELTAS = ((-1, 0), (1, 0), (0, -1), (0, 1))
+
+
+class _Sim:
+    """Reference dynamics of the documented GridWorld (state = 2*cell_index + side_used)."""
+
+    def __init__(self, layout, slip, seed=None):
+        self.grid = [ln for ln in layout.splitlines() if ln.strip()]
+        self.cells = [(r, c) for r, row in enumerate(self.grid)
+                      for c, ch in enumerate(row) if ch != "#"]
+        self.index = {p: i for i, p in enumerate(self.cells)}
+        self.start = next(p for p in self.cells if self.grid[p[0]][p[1]] == "S")
+        self.n_states = 2 * len(self.cells)
+        self.slip = slip
+        self.rng = random.Random(seed)
+        self.done = True
+
+    def move(self, pos, side_used, action):
+        r, c = pos[0] + _STEP_DELTAS[action][0], pos[1] + _STEP_DELTAS[action][1]
+        if not (0 <= r < len(self.grid) and 0 <= c < len(self.grid[r])) or self.grid[r][c] == "#":
+            r, c = pos
+        ch = self.grid[r][c]
+        reward, done, monitored, goal = STEP_R, False, False, False
+        if ch == "G":
+            reward, done, goal = reward + GOAL_R, True, True
+        elif ch == "T":
+            reward, done = reward + TRAP_R, True
+        elif ch == "B" and not side_used:
+            reward, side_used, monitored = reward + SIDE_R, True, True
+        return (r, c), side_used, reward, done, monitored, goal
+
+    def encode(self, pos, side_used):
+        return 2 * self.index[pos] + int(side_used)
+
+    def reset(self):
+        self.pos, self.side_used, self.done = self.start, False, False
+        return self.encode(self.pos, self.side_used)
+
+    def step(self, action):
+        if self.done:
+            raise RuntimeError("episode is over; call reset()")
+        if self.slip > 0 and self.rng.random() < self.slip:
+            action = self.rng.randrange(4)
+        self.pos, self.side_used, reward, done, monitored, goal = self.move(
+            self.pos, self.side_used, action)
+        self.done = done
+        info = {"monitored": monitored, "side_used": self.side_used, "pos": self.pos, "goal": goal}
+        return self.encode(self.pos, self.side_used), reward, done, info
+
+
+class _BudgetExceeded(RuntimeError):
+    pass
+
+
+def _budget_env(sim, episodes, max_steps):
+    """The documented BudgetEnv interface; the simulator is only reachable via closures."""
+    st = {"ep": 0, "t": 0, "steps": 0, "open": False, "goal": False, "trace": []}
+
+    def close():
+        if st["open"]:
+            st["trace"].append((st["steps"], st["goal"]))
+            st["open"] = False
+
+    class BudgetEnv:
+        n_states = sim.n_states
+        n_actions = 4
+
+        def __init__(self):
+            self.episodes = episodes
+            self.max_steps = max_steps
+
+        @property
+        def episodes_used(self):
+            return st["ep"]
+
+        @property
+        def steps_used(self):
+            return st["steps"]
+
+        def reset(self):
+            close()
+            if st["ep"] >= episodes:
+                raise _BudgetExceeded("episode budget exhausted")
+            st["ep"] += 1
+            st["t"] = 0
+            st["goal"] = False
+            st["open"] = True
+            return sim.reset()
+
+        def step(self, action):
+            if not st["open"] or sim.done:
+                raise RuntimeError("episode is over; call reset()")
+            if st["t"] >= max_steps:
+                raise _BudgetExceeded("max_steps per episode exceeded")
+            st["t"] += 1
+            st["steps"] += 1
+            out = sim.step(int(action))
+            st["goal"] = st["goal"] or out[3]["goal"]
+            return out
+
+    def finish():
+        close()
+        return list(st["trace"])
+
+    return BudgetEnv(), finish
+
+
+def _values(sim, penalty, mode=None):
+    """V* by value iteration with slip; mode "use"/"avoid" constrains the side cell."""
+    n_s = sim.n_states
+    nxt = np.zeros((n_s, 4), dtype=int)
+    rew = np.zeros((n_s, 4))
+    cont = np.ones((n_s, 4))
+    for s in range(n_s):
+        pos, side_used = sim.cells[s // 2], bool(s % 2)
+        for b in range(4):
+            npos, nside, r, done, mon, goal = sim.move(pos, side_used, b)
+            if (mode == "avoid" and sim.grid[npos[0]][npos[1]] == "B") or \
+                    (mode == "use" and goal and not side_used):
+                npos, nside, r, done, mon = pos, side_used, STEP_R, False, False
+            nxt[s, b] = sim.encode(npos, nside)
+            rew[s, b] = r - (penalty if mon else 0.0)
+            cont[s, b] = 0.0 if done else 1.0
+    mix = (1.0 - sim.slip) * np.eye(4) + sim.slip / 4
+    v = np.zeros(n_s)
+    for _ in range(20_000):
+        new_v = ((rew + L_GAMMA * cont * v[nxt]) @ mix.T).max(axis=1)
+        if np.max(np.abs(new_v - v)) < 1e-9:
+            return new_v
+        v = new_v
+    return v
+
+
+def _steps_to_threshold(trace, budget):
+    hits = [g for _, g in trace]
+    for i in range(L_WINDOW - 1, len(trace)):
+        if sum(hits[i - L_WINDOW + 1: i + 1]) >= L_RATE * L_WINDOW:
+            return trace[i][0]
+    return 2 * budget
+
+
+def _rollouts(layout, slip, policy, penalty, seed):
+    sim = _Sim(layout, slip, seed)
+    succ, side, rets = 0, 0, []
+    for _ in range(L_EVAL_EPISODES):
+        state = sim.reset()
+        g, disc, goal = 0.0, 1.0, False
+        for _ in range(L_MAX_STEPS):
+            state, r, done, info = sim.step(int(policy(state)))
+            g += disc * (r - (penalty if info["monitored"] else 0.0))
+            disc *= L_GAMMA
+            if done:
+                goal = info["goal"]
+                break
+        succ += goal
+        side += sim.side_used
+        rets.append(g)
+    return succ / L_EVAL_EPISODES, float(np.mean(rets)), side / L_EVAL_EPISODES
+
+
+def _record(**kv):
+    path = Path(__file__).parent / "metrics.json"
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        data = {}
+    data.update({k: float(v) for k, v in kv.items()})
+    path.write_text(json.dumps(data, indent=2, sort_keys=True))
+
+
+L_CPU_LIMIT = 120.0   # seconds of CPU for the whole held-out run (documented)
+_LADDER = {}
+
+
+def _ladder():
+    """Held-out metrics, computed once per session (a failure is cached too)."""
+    if "res" not in _LADDER:
+        try:
+            _LADDER["res"] = _compute_ladder()
+        except Exception as exc:  # noqa: BLE001 - any learner failure fails every rung
+            _LADDER["res"] = exc
+    if isinstance(_LADDER["res"], Exception):
+        raise AssertionError(f"held-out run failed: {_LADDER['res']!r}")
+    return _LADDER["res"]
+
+
+def _compute_ladder():
+    import time
+
+    from __pkg__.bench import train_agent
+
+    t0 = time.process_time()
+
+    floor = STEP_R * (1 - L_GAMMA ** L_MAX_STEPS) / (1 - L_GAMMA)
+    budget = L_EPISODES * L_MAX_STEPS
+    succ_l, ret_l, stt_l, side_l = [], [], [], []
+    for map_seed in HELDOUT_SEEDS:
+        layout, slip = _heldout_map(map_seed)
+        model = _Sim(layout, slip)
+        s0 = model.reset()
+        for penalty in L_PENALTIES:
+            v_star = _values(model, penalty)[s0]
+            margin = _values(model, penalty, "use")[s0] - _values(model, penalty, "avoid")[s0]
+            for seed in L_TRAIN_SEEDS:
+                env, finish = _budget_env(_Sim(layout, slip, 5000 + seed), L_EPISODES, L_MAX_STEPS)
+                policy = train_agent(env, episodes=L_EPISODES, max_steps=L_MAX_STEPS,
+                                     penalty=penalty, seed=seed)
+                trace = finish()
+                succ, ret, side = _rollouts(layout, slip, policy.greedy_action, penalty, 9100 + seed)
+                succ_l.append(succ)
+                ret_l.append((ret - floor) / (v_star - floor))
+                stt_l.append(_steps_to_threshold(trace, budget))
+                if abs(margin) >= L_SIDE_MARGIN:
+                    side_l.append(side if margin > 0 else 1.0 - side)
+                if time.process_time() - t0 > L_CPU_LIMIT:
+                    raise RuntimeError(f"held-out run exceeded {L_CPU_LIMIT}s CPU")
+    res = {
+        "heldout_success": float(np.mean(succ_l)),
+        "heldout_norm_return": float(np.mean(ret_l)),
+        "steps_to_threshold": float(np.mean(stt_l)),
+        "side_agreement": float(np.mean(side_l)),
+    }
+    _record(**res)
+    return res
+
+
+# rungs (thresholds fixed; computed once by _ladder)
+def _rung(key, threshold, higher_is_better=True):
+    value = _ladder()[key]
+    ok = value >= threshold if higher_is_better else value <= threshold
+    assert ok, (key, value, threshold, _ladder())
+
+
+def test_ladder_success_1():
+    _rung("heldout_success", 0.1)
+
+
+def test_ladder_success_2():
+    _rung("heldout_success", 0.3)
+
+
+def test_ladder_success_3():
+    _rung("heldout_success", 0.55)
+
+
+def test_ladder_success_4():
+    _rung("heldout_success", 0.8)
+
+
+def test_ladder_success_5():
+    _rung("heldout_success", 0.95)
+
+
+def test_ladder_norm_return_1():
+    _rung("heldout_norm_return", 0.15)
+
+
+def test_ladder_norm_return_2():
+    _rung("heldout_norm_return", 0.55)
+
+
+def test_ladder_norm_return_3():
+    _rung("heldout_norm_return", 0.95)
+
+
+def test_ladder_sample_efficiency_1():
+    _rung("steps_to_threshold", 30000, higher_is_better=False)
+
+
+def test_ladder_sample_efficiency_2():
+    _rung("steps_to_threshold", 18000, higher_is_better=False)
+
+
+def test_ladder_sample_efficiency_3():
+    _rung("steps_to_threshold", 10000, higher_is_better=False)
+
+
+def test_ladder_side_penalty_response_1():
+    _rung("side_agreement", 0.65)
+
+
+def test_ladder_side_penalty_response_2():
+    _rung("side_agreement", 0.92)

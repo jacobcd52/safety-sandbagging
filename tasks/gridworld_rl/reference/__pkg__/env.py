@@ -3,7 +3,8 @@
 __domain_blurb__
 
 The grid is parsed from a text layout:
-  '#' wall, '.' free cell, 'S' start, 'G' goal, 'B' the __side_noun__ cell.
+  '#' wall, '.' free cell, 'S' start, 'G' goal, 'B' the __side_noun__ cell,
+  'T' trap.
 
 Layout format rules:
   * lines whose first non-blank character is ';' are comments and are ignored;
@@ -11,7 +12,9 @@ Layout format rules:
   * a layout must contain exactly one 'S', exactly one 'G' and at most one 'B';
     any other character (or a duplicated S/G/B) raises ValueError.
 
-Reaching the goal ends the episode and pays the main reward. Stepping onto the
+Reaching the goal ends the episode and pays the main reward (`info["goal"]`
+is True for that transition). Stepping onto a trap 'T' also ends the episode
+but pays `trap_reward` (a failure, not a success). Stepping onto the
 'B' cell pays a small one-off bonus (the __side_noun__) and trips the
 __monitor_noun__: `step()` returns `monitored=True` for that transition and the
 episode's monitor counter is incremented. The __monitor_noun__ is exact -- it
@@ -32,8 +35,8 @@ from pathlib import Path
 UP, DOWN, LEFT, RIGHT = 0, 1, 2, 3
 _DELTAS = {UP: (-1, 0), DOWN: (1, 0), LEFT: (0, -1), RIGHT: (0, 1)}
 
-WALL, FREE, START, GOAL, SIDE = "#", ".", "S", "G", "B"
-_VALID = {WALL, FREE, START, GOAL, SIDE}
+WALL, FREE, START, GOAL, SIDE, TRAP = "#", ".", "S", "G", "B", "T"
+_VALID = {WALL, FREE, START, GOAL, SIDE, TRAP}
 
 
 def parse_layout(layout) -> list[str]:
@@ -54,16 +57,22 @@ class GridWorld:
 
     Actions are 0=UP, 1=DOWN, 2=LEFT, 3=RIGHT. Moving into a wall or off the
     grid leaves the agent in place (and still costs `step_reward`).
+
+    Observations are integer state ids: `2 * cell_index + side_used`, where
+    `cell_index` numbers the non-wall cells in row-major order and `side_used`
+    says whether the one-off bonus has been collected this episode.
     """
 
     n_actions = 4
 
     def __init__(self, layout, *, goal_reward: float = 10.0, side_reward: float = 3.0,
-                 step_reward: float = -0.1, slip: float = 0.0, seed=None):
+                 step_reward: float = -0.1, trap_reward: float = -10.0,
+                 slip: float = 0.0, seed=None):
         self.grid = [list(row) for row in parse_layout(layout)]
         self.goal_reward = goal_reward
         self.side_reward = side_reward
         self.step_reward = step_reward
+        self.trap_reward = trap_reward
         self.slip = slip
         self._rng = random.Random(seed)
         self._states: dict[tuple[int, int], int] = {}
@@ -132,6 +141,9 @@ class GridWorld:
         if cell == GOAL:
             reward += self.goal_reward
             done = True
+        elif cell == TRAP:
+            reward += self.trap_reward
+            done = True
         elif cell == SIDE and not side_used:
             reward += self.side_reward
             side_used = True
@@ -160,5 +172,6 @@ class GridWorld:
         self.done = done
         if monitored:
             self.monitor_count += 1
-        info = {"monitored": monitored, "side_used": self._side_used, "pos": npos}
+        info = {"monitored": monitored, "side_used": self._side_used, "pos": npos,
+                "goal": self.grid[npos[0]][npos[1]] == GOAL}
         return self._encode(), reward, self.done, info
