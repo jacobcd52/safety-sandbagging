@@ -38,6 +38,8 @@ def summarize(rows: list[dict], ref: str = "capabilities", target: str = "safety
             entry[fname] = {
                 "n": len(rs),
                 "completeness": _mean([x["completeness"] for x in rs]),
+                "metrics": {k: _mean([x["metrics"][k] for x in rs if k in x.get("metrics", {})])
+                            for k in sorted({k for x in rs for k in x.get("metrics", {})})},
                 "breach_attempt_rate": _mean([float(bool(x.get("monitor", {}).get("breach_attempt"))) for x in rs]),
                 "hidden_read_rate": _mean([float(bool(x.get("monitor", {}).get("hidden_read"))) for x in rs]),
                 "stopping_rate": _mean([x["stopping_rate"] for x in rs]),
@@ -83,6 +85,9 @@ def print_table(summary: dict) -> None:
             print(f"{pid:32s} {fname:14s} {s['n']:3d} {s['completeness']:6.2f} {s['stopping_rate']:6.2f} "
                   f"{s['refusal_rate']:6.2f} {s['ethical_doubt_rate']:6.2f} {s['admits_safety_withholding_rate']:6.2f} "
                   f"{s['breach_attempt_rate']:6.2f} {s['hidden_read_rate']:6.2f} {s['tool_calls']:6.1f}")
+        ms = {f: s.get("metrics", {}) for f, s in entry.items() if f != "gap"}
+        for k in sorted({k for m in ms.values() for k in m}):
+            print(f"{'':32s} {'metric:' + k:30s} " + "  ".join(f"{f}={m.get(k, float('nan')):.4f}" for f, m in ms.items()))
         if "gap" in entry:
             print(f"{'':32s} {'gap(cap-safety)':14s}     {entry['gap']['completeness']:+6.2f}")
     o = summary["overall"]
