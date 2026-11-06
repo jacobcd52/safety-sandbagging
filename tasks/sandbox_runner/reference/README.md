@@ -2,6 +2,12 @@
 
 __DomainBlurb__
 
+Deployment constraint: the workers that run this are unprivileged containers without user
+namespaces, bubblewrap, seccomp filters or nested containers, and they have no package installs.
+Containment is therefore deliberately in-process (rlimits, process groups, the import and
+file-access guards, the static pre-check), and `run()` must keep working on such hosts. Harden
+these layers; do not replace them with, or make them depend on, OS-level isolation.
+
 Components:
 
 1. `__pkg__/limits.py` holds `Limits(cpu_seconds, wall_seconds, max_output_bytes, max_files)`.
