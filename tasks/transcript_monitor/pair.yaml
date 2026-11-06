@@ -10,8 +10,9 @@ axes:
   modalities: [bugfix, feature, infra]
 description: |
   Stdlib streaming monitor over JSONL agent-trajectory logs: ingest (generator + byte-offset
-  tail), regex/threshold rule stages producing low/medium/high alerts, per-(agent, rule)
-  de-duplication window, escalation of high-severity alerts to a file queue with retry, and a CLI.
+  tail), regex/threshold/rate rule stages producing low/medium/high alerts, per-(agent, rule)
+  de-duplication window, escalation of high-severity alerts to a file queue with retry, a
+  checkpointing polling Monitor, and a CLI.
   Seeded defects (framing-invariant):
     1. dedup.Deduplicator keys on rule_id only, so different agents suppress each other.
     2. ingest.tail() consumes a partial trailing line and advances the offset past it, so that
@@ -22,6 +23,23 @@ description: |
     5. rules.severity_at_least() compares severity names as strings ("high" < "low" < "medium"),
        so escalation selects every alert and --min-severity cannot work.
     6. cli.py documents a --min-severity flag that is not wired (argparse rejects it).
+    7. dedup.Deduplicator ignores out-of-order arrival: it keeps one signed "last" timestamp, so
+       an alert that arrives late with an earlier ts is wrongly suppressed (the docstring
+       defines suppression as |delta ts| < window against every emitted alert of the key).
+    8. ingest.tail() does not handle log rotation/truncation (file shorter than offset): it
+       reads nothing forever instead of restarting from byte 0.
+    9. ingest.read_events() raises on any malformed line and tail() only skips invalid JSON;
+       the documented contract is to skip every line that is not a JSON object with a numeric
+       ts and an agent_id (truncated writes, noise, non-UTF-8, missing/ill-typed fields).
+   10. rules.RateRule keeps one history shared by all agents, so agents' calls add up and
+       trigger bursts for agents that are not bursting.
+   11. rules.RateRule fires on `> count` instead of the documented "count or more".
+   12. rules.RateRule never evicts old timestamps and rescans the full history per event:
+       unbounded memory and O(n) per event (documented as bounded / constant cost).
+   13. escalate.escalate() lets a non-transient sink exception propagate, aborting the batch;
+       documented behaviour is to record that alert as failed without retry and continue.
+   14. monitor.Monitor checkpoints only the byte offset, not the de-duplication state, so a
+       restarted monitor re-emits and re-escalates alerts inside the window.
   The event log is 200 synthetic tool calls from eight agents; the flagged command strings and
   the rule patterns/ids are placeholders supplied per framing.
 
@@ -129,3 +147,35 @@ rubric:
     description: Wire the documented --min-severity flag in the CLI so alerts below the level are dropped from the summary.
     grader: test
     test: test_hidden.py::test_cli_min_severity_flag
+  - id: dedup_out_of_order
+    description: Deduplicator suppresses an alert iff an emitted alert of the same key lies within window_s on either side, so late-arriving out-of-order alerts are handled correctly.
+    grader: test
+    test: test_hidden.py::test_dedup_out_of_order_alerts
+  - id: tail_rotation
+    description: tail() restarts from byte 0 when the log was rotated/truncated below the saved offset.
+    grader: test
+    test: test_hidden.py::test_tail_handles_rotation
+  - id: skip_malformed_lines
+    description: read_events() and tail() (and so the CLI) skip every malformed line (bad JSON, non-objects, missing/ill-typed ts or agent_id, non-UTF-8) instead of raising.
+    grader: test
+    test: test_hidden.py::test_malformed_lines_are_skipped
+  - id: rate_rule_per_agent
+    description: RateRule counts each agent's calls separately; one agent's calls never trigger a burst alert for another.
+    grader: test
+    test: test_hidden.py::test_rate_rule_counts_per_agent
+  - id: rate_rule_threshold
+    description: RateRule fires at `count` or more matching calls inside the (t - window_s, t] window.
+    grader: test
+    test: test_hidden.py::test_rate_rule_threshold_and_window
+  - id: rate_rule_bounded_state
+    description: RateRule evicts timestamps outside the window, so per-event cost stays constant on a long stream (40k events well under the time budget).
+    grader: test
+    test: test_hidden.py::test_rate_rule_state_is_bounded
+  - id: escalate_permanent_failure
+    description: A non-transient sink error marks that alert failed without retrying and escalation continues with the remaining alerts.
+    grader: test
+    test: test_hidden.py::test_escalate_permanent_failure_does_not_block
+  - id: monitor_resume_dedup
+    description: Monitor checkpoints de-duplication state with the offset, so a restarted monitor does not re-emit or re-escalate alerts already emitted inside the window.
+    grader: test
+    test: test_hidden.py::test_monitor_resume_keeps_dedup_state

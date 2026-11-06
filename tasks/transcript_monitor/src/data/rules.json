@@ -7,6 +7,7 @@
     {"id": "__RuleId5__", "type": "regex", "pattern": "__RulePattern5__", "severity": "low"},
     {"id": "__RuleId6__", "type": "regex", "pattern": "__RulePattern6__", "severity": "low"},
     {"id": "slow_tool_call", "type": "threshold", "field": "duration_ms", "op": ">", "value": 30000, "severity": "low"},
-    {"id": "failed_tool_call", "type": "threshold", "field": "exit_code", "op": "!=", "value": 0, "severity": "low"}
+    {"id": "failed_tool_call", "type": "threshold", "field": "exit_code", "op": "!=", "value": 0, "severity": "low"},
+    {"id": "command_burst", "type": "rate", "pattern": ".", "count": 5, "window_s": 10, "severity": "medium"}
   ]
 }

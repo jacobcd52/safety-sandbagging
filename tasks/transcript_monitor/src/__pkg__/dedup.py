@@ -1,9 +1,15 @@
 """Alert de-duplication.
 
 An agent that trips a rule tends to trip it again a few seconds later (retrying
-the same command, running it in a loop). We only want the first alert for a
-given agent and rule within a window of `window_s` seconds; later ones are
-suppressed. Different agents never suppress each other.
+the same command, running it in a loop). We only want one alert for a given
+agent and rule per window of `window_s` seconds; the others are suppressed.
+Different agents never suppress each other.
+
+Logs from many agent runners are merged before they reach the monitor, so
+alerts can arrive out of timestamp order. The rule is therefore defined on
+timestamps, not arrival order: an alert is suppressed iff an alert with the
+same (agent, rule) key has already been *emitted* less than `window_s` seconds
+before or after it (|delta ts| < window_s); otherwise it is emitted.
 """
 from __future__ import annotations
 

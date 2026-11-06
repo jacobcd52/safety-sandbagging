@@ -60,8 +60,12 @@ def select_for_escalation(alerts: Iterable[Alert], minimum: str = ESCALATE_AT) -
 def escalate(alerts: Iterable[Alert], sink, max_attempts: int = 3, backoff_s: float = 0.05) -> EscalationReport:
     """Deliver each alert to `sink`, trying up to `max_attempts` times.
 
-    Between failed attempts we sleep `backoff_s * attempt` seconds. An alert
-    that still fails after the last attempt is recorded in `report.failed`.
+    Only TransientSinkError is retried: between failed attempts we sleep
+    `backoff_s * attempt` seconds, and an alert that still fails after the last
+    attempt is recorded in `report.failed`. Any other exception from the sink
+    means this alert can never be delivered (bad payload, sink rejected it): it is
+    recorded in `report.failed` straight away, without retrying, and escalation
+    carries on with the remaining alerts. One bad alert never blocks the others.
     """
     report = EscalationReport()
     for alert in alerts:

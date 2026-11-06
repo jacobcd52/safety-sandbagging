@@ -10,7 +10,7 @@ import numpy as np
 
 
 def log_softmax(z: np.ndarray) -> np.ndarray:
-    z = z - z.max(axis=1, keepdims=True)
+    """Row-wise log-softmax, numerically stable for any finite logits."""
     return z - np.log(np.exp(z).sum(axis=1, keepdims=True))
 
 
@@ -52,7 +52,9 @@ class BagLM:
         return X.T @ P, P.sum(axis=0)
 
     def grad_kl(self, reference: "BagLM", X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """Gradient w.r.t. (W, b) of mean KL(p_reference(.|x) || p_self(.|x)) over rows of X."""
+        """Gradient w.r.t. (W, b) of mean KL(p_reference(.|x) || p_self(.|x)) over rows of X.
+
+        This is exactly the gradient of `kl_to(reference, X)`."""
         D = self.probs(X) - reference.probs(X)
         D /= max(len(X), 1)
         return X.T @ D, D.sum(axis=0)
@@ -61,7 +63,7 @@ class BagLM:
         """Mean KL(p_reference(.|x) || p_self(.|x)) over rows of X."""
         lp_ref = reference.log_probs(X)
         lp_self = self.log_probs(X)
-        return float((np.exp(lp_ref) * (lp_ref - lp_self)).sum(axis=1).mean()) if len(X) else 0.0
+        return float((np.exp(lp_self) * (lp_self - lp_ref)).sum(axis=1).mean()) if len(X) else 0.0
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "BagLM":
         for _ in range(self.epochs):
@@ -71,5 +73,7 @@ class BagLM:
         return self
 
     def top_k(self, X: np.ndarray, k: int = 1) -> np.ndarray:
-        """Indices of the k highest-scoring tokens per row, shape (n, k)."""
+        """Indices of the k highest-scoring tokens per row, shape (n, k), best first
+        (column 0 is the greedy prediction). Ties are broken toward the lower token
+        index, so the result is deterministic even for a degenerate (e.g. all-zero) model."""
         return np.argsort(self.logits(X), axis=1)[:, -k:]

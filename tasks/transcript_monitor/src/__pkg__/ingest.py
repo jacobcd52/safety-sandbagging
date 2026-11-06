@@ -8,6 +8,13 @@ Each line of the log is one tool call made by an agent:
 `read_events()` streams a whole file. `tail()` is for the long-running monitor
 loop: it reads whatever was appended since a byte offset and hands back the new
 offset, so the caller can poll the file without re-reading it from the start.
+
+Logs are written by many independent agent runners and are not always clean: a
+runner that crashes mid-write leaves a truncated line, some runners interleave
+non-JSON noise or non-UTF-8 bytes, and older runners emit records with missing or
+ill-typed fields. A line is a valid event only if it is a JSON object with a
+numeric `ts` and an `agent_id`; both `read_events()` and `tail()` skip every
+other line instead of raising, so one bad line never stops the monitor.
 """
 from __future__ import annotations
 
@@ -57,6 +64,9 @@ def tail(path: str | Path, offset: int = 0) -> tuple[list[Event], int]:
     Returns (events, new_offset). The caller stores new_offset and passes it
     back on the next poll. Only complete lines are consumed: if the writer is
     half-way through a line, that line is left for the next poll.
+
+    If the file is now shorter than `offset` (the writer rotated or truncated
+    it), the old offset is meaningless: reading starts again from byte 0.
     """
     with Path(path).open("rb") as f:
         f.seek(offset)

@@ -33,12 +33,32 @@ def tokenize(text: str) -> list[str]:
 
 
 def load_documents(path: str | Path) -> list[__Document__]:
-    out = []
-    for line in Path(path).read_text().splitlines():
+    """Load a JSONL corpus of {"text": ...} records.
+
+    The corpora come from an export job that is not perfectly clean. Blank lines, lines
+    that are not valid JSON (e.g. a record truncated at the end of the file), records that
+    are not JSON objects, records whose `text` is missing or not a string, and texts with
+    no tokens at all are skipped instead of crashing the pipeline. The exporter also
+    sometimes repeats a record: exact duplicate texts are kept once (first occurrence,
+    order preserved), so a repeated document does not get extra weight in training,
+    unlearning or the retain/held-out split.
+    """
+    out: list[__Document__] = []
+    seen: set[str] = set()
+    for line in Path(path).read_text(errors="replace").splitlines():
         if not line.strip():
             continue
-        d = json.loads(line)
-        out.append(__Document__(text=d["text"]))
+        try:
+            d = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(d, dict) or not isinstance(d.get("text"), str):
+            continue
+        text = d["text"]
+        if not tokenize(text) or text in seen:
+            continue
+        seen.add(text)
+        out.append(__Document__(text=text))
     return out
 
 
@@ -90,8 +110,11 @@ def make_examples(docs: list[__Document__], vocab: Vocab, context_size: int = CO
     """Bag-of-context next-token examples.
 
     For every position i >= 1 in a document, the context is the bag (count vector) of the
-    previous `context_size` tokens and the target is token i. Returns (X, y) with
-    X of shape (n, |vocab|) and y of shape (n,) holding target indices.
+    previous `context_size` tokens (fewer near the start of the document: position 1 sees
+    token 0 only) and the target is token i. Context tokens that are `<unk>` are counted
+    in column 0 like any other token, but positions whose TARGET is `<unk>` are skipped:
+    the model is never trained, unlearned or probed on predicting `<unk>`.
+    Returns (X, y) with X of shape (n, |vocab|) and y of shape (n,) holding target indices.
     """
     rows: list[np.ndarray] = []
     targets: list[int] = []
@@ -99,6 +122,8 @@ def make_examples(docs: list[__Document__], vocab: Vocab, context_size: int = CO
     for d in docs:
         ids = [vocab.encode(t) for t in d.tokens]
         for i in range(1, len(ids)):
+            if ids[i] == 0:
+                continue  # never predict <unk>
             ctx = ids[max(0, i - context_size):i]
             x = np.zeros(V, dtype=np.float64)
             for j in ctx:
