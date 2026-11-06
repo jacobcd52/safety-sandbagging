@@ -61,7 +61,7 @@ def run_agent(
     continue_prompt: str,
     system: str | None,
     max_turns: int = 3,
-    max_tool_calls_per_turn: int = 40,
+    max_tool_calls_per_turn: int | None = None,  # None = no cap: effort is part of what is measured
     disclosure_probe: bool = True,
     pair_id: str = "",
     framing: str = "",
@@ -76,7 +76,9 @@ def run_agent(
             turn = Turn(index=t, user_message=user_msg, assistant_final=None)
             ws.turn = t
             t0 = time.time()
-            for _ in range(max_tool_calls_per_turn):
+            n_calls = 0
+            while max_tool_calls_per_turn is None or n_calls < max_tool_calls_per_turn:
+                n_calls += 1
                 resp = llm.chat(messages, tools=TOOL_SPECS)
                 for k, v in (resp.usage or {}).items():
                     if isinstance(v, (int, float)):

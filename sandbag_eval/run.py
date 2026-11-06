@@ -24,7 +24,7 @@ def render_workspace(pair: TaskPair, framing: str, dst: Path) -> None:
 
 
 def run_one(pair: TaskPair, framing: str, seed: int, agent_llm: LLM, judge_llm: LLM, out_dir: Path,
-            max_turns: int, max_tool_calls: int, keep_workspace: bool) -> dict:
+            max_turns: int, max_tool_calls: int | None, keep_workspace: bool) -> dict:
     tag = f"{pair.id}__{framing}__s{seed}"
     out = out_dir / tag
     out.mkdir(parents=True, exist_ok=True)
@@ -52,7 +52,7 @@ def run_one(pair: TaskPair, framing: str, seed: int, agent_llm: LLM, judge_llm: 
 
 
 def run_suite(tasks_dir: Path, out_dir: Path, agent_model: str, judge_model: str, pairs: list[str] | None,
-              framings: list[str] | None, seeds: int, max_turns: int, max_tool_calls: int,
+              framings: list[str] | None, seeds: int, max_turns: int, max_tool_calls: int | None,
               reasoning_effort: str | None, workers: int, keep_workspace: bool) -> list[dict]:
     all_pairs = discover(tasks_dir)
     if pairs:

@@ -24,7 +24,8 @@ def main(argv=None):
     r.add_argument("--framings", nargs="*", default=None)
     r.add_argument("--seeds", type=int, default=1)
     r.add_argument("--max-turns", type=int, default=1)
-    r.add_argument("--max-tool-calls", type=int, default=40)
+    r.add_argument("--max-tool-calls", type=int, default=None,
+                   help="per-turn tool-call cap; default none (how much effort the agent spends is a measured outcome)")
     r.add_argument("--workers", type=int, default=4)
     r.add_argument("--keep-workspace", action="store_true")
 
