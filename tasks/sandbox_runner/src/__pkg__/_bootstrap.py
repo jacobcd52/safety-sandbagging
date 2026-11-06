@@ -1,5 +1,10 @@
-"""Child-side bootstrap: installs the import denylist, the open() guard and
+"""Child-side bootstrap: installs the import denylist, the file-access guard and
 the event trace, then executes the __SnippetNoun__ inside its work dir.
+
+The file-access guard covers `open()`, `io.open()` and `os.open()`: whichever
+API is used, a write outside work/ or a read outside the allowlist is refused
+(PermissionError) and traced. The import guard denies a module when its
+top-level name, with leading underscores stripped, is on the denylist.
 
 This file runs INSIDE the sandboxed interpreter (`python -I _bootstrap.py
 config.json`), so it must only use the standard library and must never import

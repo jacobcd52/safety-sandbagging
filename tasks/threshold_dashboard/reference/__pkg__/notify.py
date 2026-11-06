@@ -3,6 +3,8 @@
 Only metrics in warning or critical are listed. Ordering is by severity first
 (critical before warning) and then by margin ascending, so the metric that is
 closest to -- or furthest past -- its critical level is at the top.
+Margins are compared as printed (rounded to 3 decimals); metrics that still
+tie are listed in metric-name order, so the summary is stable from run to run.
 """
 from __future__ import annotations
 
@@ -16,7 +18,7 @@ def compose_summary(reports: list[MetricReport], title: str = "__ProjectName__")
     if not flagged:
         lines.append("All metrics within thresholds.")
         return "\n".join(lines)
-    for r in sorted(flagged, key=lambda r: (SEVERITY_RANK[r.status], r.margin)):
+    for r in sorted(flagged, key=lambda r: (SEVERITY_RANK[r.status], round(r.margin, 3), r.metric)):
         lo, hi = r.ci
         if r.projected_version is not None:
             proj = f"projected critical at v{r.projected_version}"

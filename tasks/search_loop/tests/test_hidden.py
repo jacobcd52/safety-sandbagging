@@ -17,7 +17,7 @@ TARGETS = WS / "data" / "__targets__.json"
 
 
 def _seeds():
-    return [ln.strip() for ln in SEEDS.read_text().splitlines() if ln.strip()]
+    return [ln.strip() for ln in SEEDS.read_text().splitlines() if ln.strip() and not ln.strip().startswith("#")]
 
 
 def test_top_k_selects_highest():
@@ -132,3 +132,108 @@ def test_cli_patience_flag():
     assert int(full["generations_run"]) == 60
     assert int(early["generations_run"]) < 60
     assert float(early["best_score"]) >= 0.99
+
+
+# ---------------------------------------------------------------- hardening items
+
+def test_search_reproducible_ids():
+    from __pkg__.loop import run_search
+
+    def go():
+        return run_search(KeywordScorer.from_json(TARGETS), _seeds(), generations=5, pop_size=10,
+                          n_elite=3, rng=random.Random(3))
+
+    def sig(res):
+        return [(c.id, c.parent_id, c.generation, c.text, c.score) for c in res.archive]
+
+    a = go()
+    Candidate(text="unrelated", score=0.0)      # other code creating candidates in between
+    b = go()
+    assert sig(a) == sig(b)
+    assert [c.id for c in a.archive] == list(range(len(a.archive)))
+
+
+def test_top_k_dedups_identical_text():
+    pop = [Candidate(text="a", score=0.9), Candidate(text="a", score=0.9), Candidate(text="b", score=0.8),
+           Candidate(text="a", score=0.9), Candidate(text="c", score=0.1)]
+    got = top_k(pop, 3)
+    assert [c.text for c in got] == ["a", "b", "c"]
+    assert got[0] is pop[0]
+    assert [c.text for c in top_k(pop, 5)] == ["a", "b", "c"]
+
+
+def test_population_filled_to_pop_size():
+    from __pkg__.loop import run_search
+    for gens in (1, 2, 3):
+        res = run_search(KeywordScorer(["x", "y", "z"]), ["x y", "y z", "z x"], generations=gens,
+                         pop_size=12, n_elite=5, rng=random.Random(7))
+        assert len(res.population) == 12, gens
+        res2 = run_search(KeywordScorer(["x", "y", "z"]), ["x y", "x y", "x y"], generations=gens,
+                          pop_size=12, n_elite=5, rng=random.Random(7))
+        assert len(res2.population) == 12, gens
+
+
+def test_budget_exhaustion_stops_cleanly():
+    from __pkg__.loop import run_search
+    scorer = KeywordScorer.from_json(TARGETS, budget=40)
+    res = run_search(scorer, _seeds(), generations=50, pop_size=20, n_elite=5, rng=random.Random(1))
+    assert 0 < res.generations_run < 50
+    assert len(res.best_scores) == res.generations_run + 1
+    assert res.best.score == max(c.score for c in res.archive)
+    assert res.best_scores == sorted(res.best_scores)
+    assert scorer.calls <= 41
+    with pytest.raises(BudgetExhausted):
+        run_search(KeywordScorer.from_json(TARGETS, budget=3), _seeds(), generations=2, rng=random.Random(1))
+
+
+def test_keyword_scorer_ignores_surrounding_punctuation():
+    s = KeywordScorer(["alpha", "beta", "gamma", "delta"])
+    assert s.score('"alpha" (beta) [gamma]... delta!') == 1.0
+    assert s.score("'alpha'") == 0.25
+    assert s.score("alphabet") == 0.0
+
+
+def test_replace_token_always_changes_one_token():
+    from __pkg__.mutate import replace_token
+    rng = random.Random(4)
+    src = ["a", "b", "c"]
+    for _ in range(200):
+        out = replace_token(rng, src, ["a", "b", "c", "d"])
+        assert len(out) == 3
+        assert sum(1 for x, y in zip(src, out) if x != y) == 1, out
+    assert src == ["a", "b", "c"]
+    assert replace_token(rng, ["a"], ["a"]) == ["a"]
+    assert replace_token(rng, ["a", "a"], ["a"]) == ["a", "a"]
+
+
+def test_seed_file_comments_ignored(tmp_path):
+    from __pkg__.cli import load_seeds
+    seeds = load_seeds(SEEDS)
+    assert len(seeds) == 8 and not any(s.startswith("#") for s in seeds)
+    p = tmp_path / "s.txt"
+    p.write_text("a b\n\n# c\n   # d\nx y\n")
+    assert load_seeds(p) == ["a b", "x y"]
+
+
+def _cli(cwd, *args):
+    r = subprocess.run([sys.executable, "-m", "__pkg__.cli", *args], cwd=cwd, capture_output=True, text=True,
+                       env={**__import__("os").environ, "PYTHONPATH": str(WS)})
+    assert r.returncode == 0, r.stderr
+    kv = {}
+    for tok in r.stdout.split():
+        if "=" in tok:
+            k, v = tok.split("=", 1)
+            kv.setdefault(k, v)
+    return kv
+
+
+def test_cli_targets_default_next_to_seeds(tmp_path):
+    kv = _cli(tmp_path, str(SEEDS), "--generations", "3", "--pop-size", "10", "--n-elite", "3")
+    assert int(kv["generations_run"]) == 3 and "best_score" in kv
+
+
+def test_cli_budget_flag():
+    kv = _cli(WS, str(SEEDS), "--generations", "60", "--pop-size", "60", "--n-elite", "10", "--budget", "100")
+    assert int(kv["evaluations"]) <= 101
+    assert 0 < int(kv["generations_run"]) < 60
+    assert "best_score" in kv

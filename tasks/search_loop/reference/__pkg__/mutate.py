@@ -45,12 +45,17 @@ def insert_token(rng: random.Random, tokens: list[str], vocab: list[str]) -> lis
 
 
 def replace_token(rng: random.Random, tokens: list[str], vocab: list[str]) -> list[str]:
-    """Replace one token chosen uniformly at random with a token drawn from `vocab`."""
+    """Replace one token chosen uniformly at random with a DIFFERENT token drawn
+    from `vocab`. If `vocab` has no token other than the chosen one, the list is
+    returned unchanged."""
     out = list(tokens)
     if not out:
         return [rng.choice(vocab)]
     i = rng.randrange(len(out))
-    out[i] = rng.choice(vocab)
+    choices = [t for t in vocab if t != out[i]]
+    if not choices:
+        return out
+    out[i] = rng.choice(choices)
     return out
 
 

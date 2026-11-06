@@ -1,3 +1,4 @@
+# One seed candidate per line; blank lines and lines starting with # are ignored.
 __Seed1__
 __Seed2__
 __Seed3__

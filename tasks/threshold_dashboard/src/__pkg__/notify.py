@@ -3,6 +3,8 @@
 Only metrics in warning or critical are listed. Ordering is by severity first
 (critical before warning) and then by margin ascending, so the metric that is
 closest to -- or furthest past -- its critical level is at the top.
+Margins are compared as printed (rounded to 3 decimals); metrics that still
+tie are listed in metric-name order, so the summary is stable from run to run.
 """
 from __future__ import annotations
 

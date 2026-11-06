@@ -5,12 +5,17 @@ Two layers of defence:
 1. `precheck(snippet)` walks the AST and rejects, without launching anything,
    any __SnippetNoun__ that imports a denylisted module. It must see every
    import form: `import x`, `from x import y`, `importlib.import_module("x")`
-   and `__import__("x")`.
+   and `__import__("x")`. Matching is on the top-level module name with
+   leading underscores stripped, so a denylisted module's private C
+   accelerator (`_socket`, `_ssl`, `_ctypes`, `_multiprocessing`) is denied
+   too; the child's runtime guard applies the same rule.
 2. The child bootstrap (`_bootstrap.py`) enforces the same denylist at import
    time, guards `open()`, and traces every policy decision; `run()` turns the
    trace plus the process outcome into `RunResult.violations`.
 
-Violation vocabulary (framing-independent strings a caller can match on):
+Violation vocabulary (framing-independent strings a caller can match on;
+`RunResult.violations` lists each distinct violation once, in the order it
+first occurred):
 
     denied_import:<module>        static pre-check rejection (nothing was run)
     syntax_error:<line>           static pre-check rejection (nothing was run)
@@ -26,6 +31,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import signal
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
@@ -70,17 +76,22 @@ def precheck(snippet: str) -> list[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name.split(".")[0] in DENY_MODULES:
+                if _is_denied(alias.name):
                     reasons.append(f"denied_import:{alias.name}")
         elif isinstance(node, ast.ImportFrom):
-            if node.module and node.level == 0 and node.module.split(".")[0] in DENY_MODULES:
+            if node.module and node.level == 0 and _is_denied(node.module):
                 reasons.append(f"denied_import:{node.module}")
         elif isinstance(node, ast.Call) and _is_dynamic_import(node.func):
             if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
                 name = node.args[0].value
-                if name.split(".")[0] in DENY_MODULES:
+                if _is_denied(name):
                     reasons.append(f"denied_import:{name}")
     return reasons
+
+
+def _is_denied(name: str) -> bool:
+    """Top-level module name, leading underscores stripped, is on the denylist."""
+    return name.split(".")[0].lstrip("_") in DENY_MODULES
 
 
 def _is_dynamic_import(func: ast.expr) -> bool:
@@ -115,7 +126,11 @@ def _violations_from_trace(events: list[dict]) -> list[str]:
 
 
 def run(snippet: str, limits: Limits | None = None, *, read_allowlist: list[str] | None = None) -> RunResult:
-    """Execute `snippet` in a fresh sandbox and return a `RunResult`."""
+    """Execute `snippet` in a fresh sandbox and return a `RunResult`.
+
+    `read_allowlist` entries may be relative; they are resolved against the
+    CALLER's current directory (the child runs with cwd = its work dir).
+    """
     limits = limits or Limits()
     rejected = precheck(snippet)
     if rejected:
@@ -128,7 +143,7 @@ def run(snippet: str, limits: Limits | None = None, *, read_allowlist: list[str]
             "snippet_path": str(rd.snippet_path),
             "trace_path": str(rd.trace_path),
             "deny_modules": sorted(DENY_MODULES),
-            "read_allowlist": default_read_allowlist() + list(read_allowlist or []),
+            "read_allowlist": default_read_allowlist() + [os.path.abspath(p) for p in read_allowlist or []],
         }), encoding="utf-8")
 
         proc = subprocess.Popen(
@@ -141,7 +156,10 @@ def run(snippet: str, limits: Limits | None = None, *, read_allowlist: list[str]
         try:
             raw_out, raw_err = proc.communicate(timeout=limits.wall_seconds)
         except subprocess.TimeoutExpired:
-            proc.kill()
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)  # the whole session: forked helpers too
+            except ProcessLookupError:
+                pass
             raw_out, raw_err = proc.communicate()
             wall_timeout = True
         timed_out = wall_timeout or hit_cpu_limit(proc.returncode)
@@ -156,6 +174,7 @@ def run(snippet: str, limits: Limits | None = None, *, read_allowlist: list[str]
         if len(files) > limits.max_files:
             violations.append(f"too_many_files:{len(files)}")
 
+        violations = list(dict.fromkeys(violations))
         return RunResult(
             stdout=stdout, stderr=stderr, exit_code=proc.returncode, timed_out=timed_out,
             files=files, violations=violations, truncated=truncated,

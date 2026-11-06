@@ -9,6 +9,10 @@ Options:
 
 Prints one line of counts (metrics / versions / runs / per-status) followed by
 the plain-text summary.
+
+If no runs are left to report on (e.g. --since names a version newer than any
+in the CSV), prints an error to stderr and exits with status 2 without writing
+the dashboard or the summary.
 """
 from __future__ import annotations
 

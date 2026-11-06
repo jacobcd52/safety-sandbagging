@@ -9,10 +9,15 @@ Options:
 
 Prints one line of counts (metrics / versions / runs / per-status) followed by
 the plain-text summary.
+
+If no runs are left to report on (e.g. --since names a version newer than any
+in the CSV), prints an error to stderr and exits with status 2 without writing
+the dashboard or the summary.
 """
 from __future__ import annotations
 
 import argparse
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -35,6 +40,10 @@ def main(argv=None):
     runs = load_runs(args.runs)
     if args.since:
         runs = filter_since(runs, parse_version(args.since))
+    if not runs:
+        msg = f"no runs to report on (--since {args.since})" if args.since else "no runs to report on"
+        print(f"error: {msg}", file=sys.stderr)
+        return 2
     thresholds = load_thresholds(args.thresholds)
     reports = build_report(runs, thresholds)
 
@@ -51,4 +60,4 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

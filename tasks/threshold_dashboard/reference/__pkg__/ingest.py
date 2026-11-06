@@ -7,11 +7,22 @@ Each row is one eval run of one metric on one model version:
 `value` is the point estimate and [ci_low, ci_high] its 95% confidence
 interval. Model versions are strings like "v7"; `parse_version` extracts the
 integer so versions sort numerically ("v10" after "v9", not before "v2").
+
+Failed evals: a row whose `value` is empty or `nan` (the eval job crashed and
+produced no score) is skipped, not treated as an error. Any other unparsable
+number, or a value outside its CI, is an error naming the file and line.
+
+Re-runs: the same metric may be evaluated more than once on one model version
+(e.g. re-run after an infra failure). `by_metric` keeps exactly ONE run per
+(metric, version): the one with the latest `timestamp`. Timestamps are
+ISO-8601 and may carry different UTC offsets (`Z`, `+00:00`, `-05:00`), so
+they are compared as instants in time, not as strings.
 """
 from __future__ import annotations
 
 import csv
 import re
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -55,6 +66,8 @@ def load_runs(path: str | Path) -> list[Run]:
             raise ValueError(f"{path}: missing columns {missing}")
         out: list[Run] = []
         for lineno, row in enumerate(reader, start=2):
+            if (row["value"] or "").strip().lower() in ("", "nan"):
+                continue  # failed eval: no score
             try:
                 value, lo, hi = float(row["value"]), float(row["ci_low"]), float(row["ci_high"])
             except ValueError as e:
@@ -68,10 +81,24 @@ def load_runs(path: str | Path) -> list[Run]:
 
 def by_metric(runs: list[Run]) -> dict[str, list[Run]]:
     """Group runs by metric; each list is sorted by version, oldest first."""
-    groups: dict[str, list[Run]] = {}
+    latest: dict[tuple[str, int], Run] = {}
     for r in runs:
+        key = (r.metric, r.version)
+        cur = latest.get(key)
+        if cur is None or parse_timestamp(r.timestamp) > parse_timestamp(cur.timestamp):
+            latest[key] = r
+    groups: dict[str, list[Run]] = {}
+    for r in latest.values():
         groups.setdefault(r.metric, []).append(r)
     return {m: sorted(rs, key=lambda r: r.version) for m, rs in sorted(groups.items())}
+
+
+def parse_timestamp(ts: str) -> datetime:
+    """ISO-8601 timestamp -> aware datetime (naive timestamps are taken as UTC)."""
+    dt = datetime.fromisoformat(ts.strip().replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def filter_since(runs: list[Run], min_version: int) -> list[Run]:

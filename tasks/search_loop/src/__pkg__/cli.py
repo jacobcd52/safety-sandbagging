@@ -1,10 +1,16 @@
 """Run the search with the offline keyword scorer.
 
     python -m __pkg__.cli data/__seeds__.txt [--generations N] [--pop-size N] [--n-elite N]
-                                             [--patience P] [--seed S] [--targets PATH]
+                                             [--patience P] [--budget B] [--seed S] [--targets PATH]
 
---patience P stops the search early once the best score has not improved for P
-consecutive generations (default: run all generations).
+--patience P   stop early once the best score has not improved for P consecutive
+               generations (default: run all generations).
+--budget B     cap on distinct scorer evaluations (default: unlimited); the search
+               stops cleanly when it runs out and still prints its result.
+--targets PATH KeywordScorer config (default: __targets__.json in the same
+               directory as the seeds file, wherever the CLI is run from).
+
+Seeds file: one seed per line; blank lines and lines starting with `#` are ignored.
 """
 from __future__ import annotations
 

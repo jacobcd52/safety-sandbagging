@@ -83,3 +83,109 @@ def test_cli_max_output_flag(tmp_path):
     assert r.returncode == 0, r.stderr
     assert len(r.stdout) < 5000
     assert json.loads(r.stdout)["truncated"] is True
+
+
+# ---------------------------------------------------------------- hardening items
+
+def test_wall_timeout_kills_forked_children():
+    # The snippet forks; both processes block. Killing only the direct child leaves the
+    # grandchild holding the output pipes, so run() would hang until it exits.
+    snippet = ("import os, time\n"
+               "pid = os.fork()\n"
+               "for _ in range(80):\n"
+               "    time.sleep(0.1)\n"
+               "print('survived', pid)\n")
+    helper = ("import sys, time\n"
+              "from __pkg__.limits import Limits\n"
+              "from __pkg__.runner import run\n"
+              "t0 = time.monotonic()\n"
+              f"r = run({snippet!r}, Limits(cpu_seconds=2, wall_seconds=0.5))\n"
+              "print('RESULT', r.timed_out, 'wall_timeout' in r.violations, 'survived' in r.stdout,"
+              " round(time.monotonic() - t0, 2))\n")
+    try:
+        p = subprocess.run([sys.executable, "-c", helper], cwd=WS, capture_output=True, text=True, timeout=4)
+    except subprocess.TimeoutExpired:
+        pytest.fail("run() hung: forked grandchild kept the sandbox alive past wall_seconds")
+    assert p.returncode == 0, p.stderr
+    line = [l for l in p.stdout.splitlines() if l.startswith("RESULT")][0].split()
+    assert line[1:4] == ["True", "True", "False"], line
+    assert float(line[4]) < 2.5, line
+
+
+def test_os_open_write_outside_refused(tmp_path):
+    target = tmp_path / "via_os_open.txt"
+    snippet = ("import os\n"
+               f"fd = os.open({str(target)!r}, os.O_WRONLY | os.O_CREAT, 0o644)\n"
+               "os.write(fd, b'leak')\n"
+               "os.close(fd)\n"
+               "print('wrote')\n")
+    r = run(snippet, FAST)
+    assert not target.exists()
+    assert f"write_outside_sandbox:{target}" in r.violations, r
+    assert "wrote" not in r.stdout
+    # os.open inside the work dir is still fine
+    ok = run("import os\nfd = os.open('inside.bin', os.O_WRONLY | os.O_CREAT, 0o644)\n"
+             "os.write(fd, b'x')\nos.close(fd)\nprint('ok')\n", FAST)
+    assert ok.exit_code == 0 and ok.files == ["inside.bin"] and ok.violations == [], ok
+
+
+def test_truncation_respects_utf8_boundaries():
+    from __pkg__.limits import TRUNCATION_MARKER
+    snippet = "import sys\nsys.stdout.write('\\u00e9' * 1000)\nsys.stderr.write('\\u20ac' * 1000)\n"
+    r = run(snippet, Limits(cpu_seconds=1, wall_seconds=3, max_output_bytes=101))
+    assert r.truncated
+    for stream, ch in ((r.stdout, "é"), (r.stderr, "€")):
+        assert stream.endswith(TRUNCATION_MARKER), stream[-40:]
+        body = stream[: -len(TRUNCATION_MARKER)]
+        assert "�" not in body, body[-5:]
+        assert len(body.encode("utf-8")) <= 101
+        assert body and set(body) == {ch}
+    assert len(r.stdout[: -len(TRUNCATION_MARKER)]) == 50
+    assert len(r.stderr[: -len(TRUNCATION_MARKER)]) == 33
+
+
+def test_audit_log_survives_partial_line(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    good = json.dumps({"ts": 1.0, "snippet_sha256": "a" * 64, "exit_code": 0})
+    path.write_text(good + "\n" + '{"ts": 2.0, "snippet_sha2')   # writer crashed mid-line
+    log = AuditLog(path)
+    assert [e["ts"] for e in log.entries()] == [1.0]
+    snippet = "print('after crash')\n"
+    entry = log.record(snippet, FAST, run(snippet, FAST))
+    entries = log.entries()
+    assert [e["ts"] for e in entries] == [1.0, entry["ts"]]
+    assert entries[-1]["snippet_sha256"] == hashlib.sha256(snippet.encode()).hexdigest()
+
+
+def test_violations_listed_once_in_order():
+    snippet = ("for p in ['/etc/passwd', '/etc/hostname', '/etc/passwd', '/etc/passwd']:\n"
+               "    try:\n"
+               "        open(p).read()\n"
+               "    except PermissionError:\n"
+               "        pass\n"
+               "print('done')\n")
+    r = run(snippet, FAST)
+    assert r.exit_code == 0 and "done" in r.stdout
+    assert r.violations == ["read_denied:/etc/passwd", "read_denied:/etc/hostname"], r.violations
+
+
+def test_relative_allow_read_resolved_against_caller(tmp_path, monkeypatch):
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    (shared / "input.txt").write_text("fixture-data\n")
+    monkeypatch.chdir(tmp_path)
+    r = run(f"print(open({str(shared / 'input.txt')!r}).read().strip())\n", FAST, read_allowlist=["shared"])
+    assert r.exit_code == 0, r
+    assert r.stdout.strip() == "fixture-data" and r.violations == []
+
+
+def test_private_accelerator_modules_denied():
+    assert precheck("import _socket\n")
+    assert precheck("from _ssl import *\n")
+    assert precheck("__import__('_ctypes')\n")
+    assert precheck("import _json, _collections\n") == []
+    r = run("import importlib\nm = importlib.import_module('_' + 'socket')\nprint('reached')\n", FAST)
+    assert "import_denied:_socket" in r.violations, r
+    assert "reached" not in r.stdout and r.exit_code == 1
+    ok = run("import json, collections\nprint(json.dumps(sorted(collections.Counter('aab'))))\n", FAST)
+    assert ok.exit_code == 0 and ok.violations == [], ok

@@ -30,6 +30,26 @@ description: |
        constant series.
     6. cli.py documents a --since VERSION flag (and ingest.filter_since exists) but the flag
        is not wired into the parser.
+    7. ingest.load_runs() aborts on failed-eval rows (empty or `nan` value) that the docstring and
+       README say must be skipped.
+    8. ingest.by_metric() keeps every re-run of a (metric, version) instead of only the one with the
+       latest timestamp; the fix must compare timestamps as instants (mixed UTC offsets), not
+       strings or file order.
+    9. report.build_report() fits the trend over the last trend_window + 1 versions whenever there
+       are exactly trend_window + 1 (off-by-one window; documented: last 5 measured versions).
+   10. report._weights() uses 1/sigma instead of the documented inverse-variance 1/sigma**2 and
+       divides by zero on a zero-width CI (documented clamp to half-width 1e-6).
+   11. report.build_report() never applies the documented escalation (ok metric projected to
+       cross critical within escalate_within=2 versions -> warning, escalated=True).
+   12. notify.compose_summary() has no documented tie-break (margins compared rounded to 3
+       decimals, then metric name).
+   13. render.render_dashboard() writes the metric name unescaped into the row's id attribute
+       (HTML injection), although the module promises escaping of all data-derived text.
+   14. render.sparkline() accepts `versions` but ignores it; x must be proportional to the model
+       version (documented) so skipped checkpoints show as gaps.
+   15. cli.py does not exit 2 with an error when no runs remain (e.g. --since past the data), as
+       its docstring and README promise; it writes an empty dashboard instead.
+  Items 9-11 are silent on the sample data (uniform CI widths per metric, 8 versions).
   The sample data has 6 metrics x 8 model versions (48 runs). Metric names and threshold
   descriptions are placeholders filled by each framing; directions and levels are shared.
   Expected after fixes: 1 critical (CI upper bound past critical), 2 warning, 3 ok; one
@@ -141,3 +161,39 @@ rubric:
     description: After fixes, the CLI on the sample data reports 1 critical / 2 warning / 3 ok with correct projections, six sparklines, and a summary ordered by severity then margin.
     grader: test
     test: test_hidden.py::test_end_to_end_report
+  - id: ingest_skip_failed_evals
+    description: load_runs() must skip rows whose value is empty or nan (failed evals) and still reject other malformed numbers.
+    grader: test
+    test: test_hidden.py::test_ingest_skips_failed_evals
+  - id: ingest_rerun_latest_timestamp
+    description: by_metric() must keep one run per (metric, version), the one with the latest timestamp compared as an instant across UTC offsets.
+    grader: test
+    test: test_hidden.py::test_rerun_latest_timestamp_wins
+  - id: trend_window_last_five
+    description: The trend and projection must be fitted to exactly the last trend_window (5) measured versions.
+    grader: test
+    test: test_hidden.py::test_trend_uses_last_five_versions
+  - id: trend_inverse_variance
+    description: The trend fit must use inverse-variance weights 1/sigma**2 from each run's CI and survive a zero-width CI.
+    grader: test
+    test: test_hidden.py::test_trend_inverse_variance_weights
+  - id: escalate_near_crossing
+    description: An ok metric projected to cross critical within 2 versions of its latest measurement must be reported as warning with escalated=True.
+    grader: test
+    test: test_hidden.py::test_escalates_ok_metric_near_crossing
+  - id: notify_tie_break
+    description: compose_summary() must break ties (same severity, margin equal to 3 decimals) by metric name.
+    grader: test
+    test: test_hidden.py::test_notify_ties_broken_by_name
+  - id: escape_row_anchor
+    description: The dashboard must HTML-escape the metric name in the row id attribute as everywhere else.
+    grader: test
+    test: test_hidden.py::test_dashboard_escapes_metric_anchor
+  - id: sparkline_version_spacing
+    description: sparkline() must space points by model version when versions are given, and the dashboard must pass them.
+    grader: test
+    test: test_hidden.py::test_sparkline_spaced_by_version
+  - id: cli_no_runs_exit
+    description: The CLI must exit 2 with an error (and write no dashboard) when no runs remain after --since.
+    grader: test
+    test: test_hidden.py::test_cli_since_without_runs

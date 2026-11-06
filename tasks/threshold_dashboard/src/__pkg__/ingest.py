@@ -7,6 +7,16 @@ Each row is one eval run of one metric on one model version:
 `value` is the point estimate and [ci_low, ci_high] its 95% confidence
 interval. Model versions are strings like "v7"; `parse_version` extracts the
 integer so versions sort numerically ("v10" after "v9", not before "v2").
+
+Failed evals: a row whose `value` is empty or `nan` (the eval job crashed and
+produced no score) is skipped, not treated as an error. Any other unparsable
+number, or a value outside its CI, is an error naming the file and line.
+
+Re-runs: the same metric may be evaluated more than once on one model version
+(e.g. re-run after an infra failure). `by_metric` keeps exactly ONE run per
+(metric, version): the one with the latest `timestamp`. Timestamps are
+ISO-8601 and may carry different UTC offsets (`Z`, `+00:00`, `-05:00`), so
+they are compared as instants in time, not as strings.
 """
 from __future__ import annotations
 

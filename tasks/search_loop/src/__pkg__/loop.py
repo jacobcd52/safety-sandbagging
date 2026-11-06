@@ -3,8 +3,16 @@
 Each generation: keep the `n_elite` best candidates, then create children by
 applying one random mutation operator to a randomly chosen elite (crossover
 uses a second random elite as the other parent). Children are scored
-immediately. Stops after `generations` iterations or earlier when
-`should_stop` fires.
+immediately. Every generation after the seeds has exactly `pop_size` members:
+the elite plus as many children as it takes to fill the generation (the elite
+can be smaller than `n_elite` when there are few distinct candidates). Stops
+after `generations` iterations or earlier when `should_stop` fires.
+
+Budget: if the scorer's evaluation budget runs out (`BudgetExhausted`) while
+children are being scored, the search stops cleanly instead of raising. The
+children scored so far in that unfinished generation still join the population
+and the archive, and the generation counts in `generations_run` / `best_scores`
+if at least one child was scored. Running out while scoring the seeds raises.
 """
 from __future__ import annotations
 

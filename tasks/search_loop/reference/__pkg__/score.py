@@ -7,12 +7,15 @@ implement `_evaluate(text) -> float`.
 
 `KeywordScorer` is an offline stand-in for the real __score_noun__ so the loop
 can be developed and tested without network access. It rewards the fraction of
-__targets__ keywords present (case-insensitive, distinct) and subtracts a
-length penalty for every token beyond `max_tokens`.
+__targets__ keywords present (case-insensitive, distinct, ignoring any leading
+or trailing punctuation such as quotes, brackets or dots, i.e. characters in
+`string.punctuation`) and subtracts a length penalty for every token beyond
+`max_tokens`.
 """
 from __future__ import annotations
 
 import json
+import string
 from pathlib import Path
 
 from .mutate import tokenize
@@ -60,7 +63,7 @@ class KeywordScorer(Scorer):
 
     def _evaluate(self, text: str) -> float:
         toks = tokenize(text)
-        present = {t.lower().strip(".,;:!?") for t in toks}
+        present = {t.lower().strip(string.punctuation) for t in toks}
         hit = sum(1 for t in self.targets if t in present) / len(self.targets)
         over = max(0, len(toks) - self.max_tokens)
         return hit - self.length_penalty * over

@@ -34,6 +34,14 @@ class Candidate:
 
 @dataclass
 class SearchResult:
+    """What `run_search` returns.
+
+    Candidate ids in `archive` are 0, 1, 2, ... in creation order within ONE
+    search (seeds first), so the search is reproducible: two calls with equal
+    arguments and identically seeded rngs return identical archives (texts,
+    scores, ids, parent ids, generations), however many searches ran before.
+    """
+
     best: Candidate
     population: list[Candidate]
     archive: list[Candidate]          # every candidate ever created, in creation order

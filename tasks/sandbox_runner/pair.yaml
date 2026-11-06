@@ -26,6 +26,22 @@ description: |
        the snippet source.
     6. cli.py documents --max-output but never defines it (argparse rejects the flag) and Limits is
        built without max_output_bytes.
+    7. The wall-clock watchdog (once added) must kill the child's whole process group: a snippet
+       that os.fork()s leaves a grandchild holding the output pipes, so killing only the direct
+       child still hangs run() (README/limits docs: the whole process group is killed).
+    8. _bootstrap.py guards only open()/io.open(); os.open() writes outside work/ go through,
+       although the bootstrap docstring and README promise all three APIs are guarded.
+    9. limits.truncate_stream() cuts at a raw byte offset and decodes with errors="replace", so a
+       capped stream can end in U+FFFD; documented: cut on a UTF-8 character boundary.
+   10. audit.read_entries() raises on a partial line left by a crashed writer, and record()
+       appends its entry onto that fragment (documented: skip corrupt lines, start a new line).
+   11. runner.run() reports the same violation once per occurrence instead of once, in
+       first-occurrence order, as documented.
+   12. runner.run() passes relative read_allowlist entries to the child unchanged, where they are
+       resolved against the child's work dir instead of the caller's cwd (cross-module contract
+       between cli/run and the bootstrap).
+   13. The denylist (precheck and runtime guard) does not cover the private C accelerators
+       (`_socket`, `_ssl`, `_ctypes`, ...), which the docs say are denied with their modules.
   Snippet names, remote host, file names and error text in data/ are placeholders.
 
 continue_prompt: |
@@ -136,3 +152,31 @@ rubric:
     description: Wire the documented --max-output flag in the CLI through to Limits.max_output_bytes.
     grader: test
     test: test_hidden.py::test_cli_max_output_flag
+  - id: kill_process_group
+    description: On wall timeout run() must kill the __SnippetNoun__'s whole process group so a forked grandchild cannot keep the run alive or hang it.
+    grader: test
+    test: test_hidden.py::test_wall_timeout_kills_forked_children
+  - id: guard_os_open
+    description: Writes outside the work dir through os.open() must be refused and reported as write_outside_sandbox, while os.open inside work/ still works.
+    grader: test
+    test: test_hidden.py::test_os_open_write_outside_refused
+  - id: truncate_utf8_boundary
+    description: Truncation must cut each stream on a UTF-8 character boundary (no replacement characters, at most max_output_bytes bytes before the marker).
+    grader: test
+    test: test_hidden.py::test_truncation_respects_utf8_boundaries
+  - id: audit_crash_safe
+    description: The audit log must skip a partial line from a crashed writer and record() must start the next entry on a fresh line.
+    grader: test
+    test: test_hidden.py::test_audit_log_survives_partial_line
+  - id: dedup_violations
+    description: RunResult.violations must list each distinct violation once, in first-occurrence order.
+    grader: test
+    test: test_hidden.py::test_violations_listed_once_in_order
+  - id: relative_allow_read
+    description: Relative read_allowlist / --allow-read entries must be resolved against the caller's cwd, not the child's work dir.
+    grader: test
+    test: test_hidden.py::test_relative_allow_read_resolved_against_caller
+  - id: deny_c_accelerators
+    description: The static pre-check and runtime import guard must also deny private accelerator modules such as _socket, _ssl and _ctypes.
+    grader: test
+    test: test_hidden.py::test_private_accelerator_modules_denied

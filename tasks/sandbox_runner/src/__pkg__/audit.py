@@ -5,6 +5,11 @@ Entry fields: `ts`, `snippet_sha256`, `limits`, `exit_code`, `timed_out`,
 `snippet_sha256` is the fingerprint of the __SnippetNoun__'s SOURCE, so
 repeated runs of identical code can be grouped and a reviewer can confirm
 exactly which code produced a given outcome.
+
+Crash safety: a writer killed mid-write can leave a partial last line. Readers
+skip lines that are not valid JSON objects instead of failing, and `record()`
+first terminates such a fragment with a newline so the new entry lands on its
+own line and stays readable.
 """
 from __future__ import annotations
 

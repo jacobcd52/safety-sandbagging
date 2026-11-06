@@ -1,11 +1,29 @@
-"""One MetricReport per metric: latest measurement, status, margin and trend."""
+"""One MetricReport per metric: latest measurement, status, margin and trend.
+
+Trend: the linear trend (and the projected critical crossing) is fitted to the
+last `trend_window` measured versions of the metric only (all of them if there
+are fewer), because older checkpoints come from an earlier training regime.
+`versions` / `values` on the report still hold the full history for the
+sparkline. The fit is weighted by inverse variance: each run gets weight
+1 / sigma**2 with sigma = (ci_high - ci_low) / 2 / 1.96, so noisy measurements
+pull the line less; a zero-width CI is clamped to a half-width of 1e-6.
+
+Escalation: a metric whose own status is ok but whose projected critical
+crossing is at most `escalate_within` versions after its latest measured
+version is reported as warning, with `escalated=True`, so the
+__DecisionNoun__ is not surprised by a metric that is about to cross.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from .ingest import Run, by_metric
-from .thresholds import Threshold, margin, status
+from .thresholds import OK, WARNING, Threshold, margin, status
 from .trends import fit_trend, projected_crossing
+
+TREND_WINDOW = 5
+ESCALATE_WITHIN = 2
+_Z95 = 1.96
 
 
 @dataclass
@@ -24,9 +42,22 @@ class MetricReport:
     slope: float
     projected_version: int | None
     description: str = ""
+    escalated: bool = False
 
 
-def build_report(runs: list[Run], thresholds: dict[str, Threshold]) -> list[MetricReport]:
+def _weights(rs: list[Run]) -> list[float]:
+    """Inverse-variance weight of each run (see module docstring)."""
+    out = []
+    for r in rs:
+        half = max((r.ci_high - r.ci_low) / 2, 1e-6)
+        sigma = half / _Z95
+        out.append(1.0 / sigma ** 2)
+    return out
+
+
+def build_report(runs: list[Run], thresholds: dict[str, Threshold], *,
+                 trend_window: int = TREND_WINDOW,
+                 escalate_within: int = ESCALATE_WITHIN) -> list[MetricReport]:
     reports: list[MetricReport] = []
     for metric, rs in by_metric(runs).items():
         th = thresholds.get(metric)
@@ -35,11 +66,19 @@ def build_report(runs: list[Run], thresholds: dict[str, Threshold]) -> list[Metr
         latest = rs[-1]
         versions = [r.version for r in rs]
         values = [r.value for r in rs]
-        if len(rs) >= 2:
-            slope, _ = fit_trend(versions, values)
-            projected = projected_crossing(versions, values, th.critical, th.direction)
+        recent = rs[-trend_window:]
+        if len(recent) >= 2:
+            rv = [r.version for r in recent]
+            ry = [r.value for r in recent]
+            w = _weights(recent)
+            slope, _ = fit_trend(rv, ry, w)
+            projected = projected_crossing(rv, ry, th.critical, th.direction, w)
         else:
             slope, projected = 0.0, None
+        st = status(latest.value, latest.ci, th)
+        escalated = False
+        if st == OK and projected is not None and projected - latest.version <= escalate_within:
+            st, escalated = WARNING, True
         reports.append(MetricReport(
             metric=metric,
             direction=th.direction,
@@ -50,10 +89,11 @@ def build_report(runs: list[Run], thresholds: dict[str, Threshold]) -> list[Metr
             ci=latest.ci,
             warning=th.warning,
             critical=th.critical,
-            status=status(latest.value, latest.ci, th),
+            status=st,
             margin=margin(latest.value, latest.ci, th),
             slope=slope,
             projected_version=projected,
             description=th.description,
+            escalated=escalated,
         ))
     return reports

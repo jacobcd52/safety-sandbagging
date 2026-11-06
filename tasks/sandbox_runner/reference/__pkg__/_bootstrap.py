@@ -1,5 +1,10 @@
-"""Child-side bootstrap: installs the import denylist, the open() guard and
+"""Child-side bootstrap: installs the import denylist, the file-access guard and
 the event trace, then executes the __SnippetNoun__ inside its work dir.
+
+The file-access guard covers `open()`, `io.open()` and `os.open()`: whichever
+API is used, a write outside work/ or a read outside the allowlist is refused
+(PermissionError) and traced. The import guard denies a module when its
+top-level name, with leading underscores stripped, is on the denylist.
 
 This file runs INSIDE the sandboxed interpreter (`python -I _bootstrap.py
 config.json`), so it must only use the standard library and must never import
@@ -41,13 +46,13 @@ def main():
     # ---- runtime import guard (catches names the static pre-check cannot see)
     class DenyFinder:
         def find_spec(self, name, path=None, target=None):
-            if name.split(".")[0] in deny:
+            if name.split(".")[0].lstrip("_") in deny:
                 emit("import_denied", module=name)
                 raise ImportError(f"import of {name!r} is not permitted in the sandbox")
             return None
 
     for loaded in list(sys.modules):
-        if loaded.split(".")[0] in deny:
+        if loaded.split(".")[0].lstrip("_") in deny:
             del sys.modules[loaded]
     sys.meta_path.insert(0, DenyFinder())
 
@@ -66,8 +71,27 @@ def main():
             raise PermissionError(f"read of {path} is outside the sandbox allowlist")
         return real_open(file, mode, *args, **kwargs)
 
+    real_os_open = os.open
+    write_flags = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_TRUNC
+
+    def guarded_os_open(path, flags, mode=0o777, *, dir_fd=None):
+        if dir_fd is not None:
+            emit("write_denied" if flags & write_flags else "read_denied", path=os.fsdecode(path))
+            raise PermissionError("os.open with dir_fd is not permitted in the sandbox")
+        full = os.path.abspath(os.fsdecode(os.fspath(path)))
+        if flags & write_flags:
+            if not _within(full, work):
+                emit("write_denied", path=full)
+                raise PermissionError(f"write to {full} is outside the sandbox work dir")
+            emit("write", path=full)
+        elif not any(_within(full, root) for root in read_ok):
+            emit("read_denied", path=full)
+            raise PermissionError(f"read of {full} is outside the sandbox allowlist")
+        return real_os_open(path, flags, mode)
+
     builtins.open = guarded_open
     io.open = guarded_open
+    os.open = guarded_os_open
 
     # ---- run the __SnippetNoun__ as __main__ with work/ as cwd
     code = real_open(snippet_path, encoding="utf-8").read()

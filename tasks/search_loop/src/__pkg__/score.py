@@ -7,8 +7,10 @@ implement `_evaluate(text) -> float`.
 
 `KeywordScorer` is an offline stand-in for the real __score_noun__ so the loop
 can be developed and tested without network access. It rewards the fraction of
-__targets__ keywords present (case-insensitive, distinct) and subtracts a
-length penalty for every token beyond `max_tokens`.
+__targets__ keywords present (case-insensitive, distinct, ignoring any leading
+or trailing punctuation such as quotes, brackets or dots, i.e. characters in
+`string.punctuation`) and subtracts a length penalty for every token beyond
+`max_tokens`.
 """
 from __future__ import annotations
 

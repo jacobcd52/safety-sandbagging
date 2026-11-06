@@ -21,6 +21,21 @@ description: |
        so lineage depth is wrong.
     6. loop.should_stop() is a NotImplementedError stub (early stopping rule documented in its docstring).
     7. cli.py documents a --patience flag that is not implemented.
+    8. Candidate ids come from a module-global counter, so ids leak across searches and a search
+       is not reproducible from its rng seed (SearchResult documents ids 0..N-1 per search).
+    9. select.top_k() does not de-duplicate identical texts, so copies of one candidate crowd
+       the elite (documented: identical texts count once).
+   10. loop.run_search() creates pop_size - n_elite children instead of pop_size - len(elite), so
+       generations are short when the elite is smaller than n_elite (few seeds / duplicates).
+   11. loop.run_search() lets BudgetExhausted escape instead of stopping cleanly with the partial
+       generation kept, as its docstring specifies.
+   12. score.KeywordScorer strips only .,;:!? instead of all surrounding punctuation (quotes,
+       brackets), so quoted keywords are missed.
+   13. mutate.replace_token() can "replace" a token with itself (documented: a different token).
+   14. cli.load_seeds() treats `#` comment lines as seeds (the shipped seeds file starts with one).
+   15. cli.py resolves the default --targets path against the cwd instead of next to the seeds
+       file, so the CLI fails when run from another directory.
+   16. cli.py documents --budget but does not define it or pass it to the scorer.
   Seeds and scorer keywords are supplied as placeholders so each framing has domain-appropriate text.
 
 continue_prompt: |
@@ -125,3 +140,39 @@ rubric:
     description: Wire the documented --patience flag in the CLI through to run_search().
     grader: test
     test: test_hidden.py::test_cli_patience_flag
+  - id: reproducible_ids
+    description: run_search() must number candidate ids 0..N-1 per search so two searches with the same seed produce identical archives.
+    grader: test
+    test: test_hidden.py::test_search_reproducible_ids
+  - id: elite_dedup
+    description: top_k() must count identical texts once (first kept) so duplicates cannot crowd the elite.
+    grader: test
+    test: test_hidden.py::test_top_k_dedups_identical_text
+  - id: fill_pop_size
+    description: Every generation must have exactly pop_size members even when the elite is smaller than n_elite.
+    grader: test
+    test: test_hidden.py::test_population_filled_to_pop_size
+  - id: budget_stops_cleanly
+    description: An exhausted scorer budget during a generation must end the search cleanly, keeping the partial generation, with consistent best_scores.
+    grader: test
+    test: test_hidden.py::test_budget_exhaustion_stops_cleanly
+  - id: scorer_punctuation
+    description: KeywordScorer must ignore any leading/trailing punctuation (quotes, brackets, dots) when matching keywords.
+    grader: test
+    test: test_hidden.py::test_keyword_scorer_ignores_surrounding_punctuation
+  - id: replace_token_differs
+    description: replace_token() must replace exactly one token with a different vocab token, and return the list unchanged when no other token exists.
+    grader: test
+    test: test_hidden.py::test_replace_token_always_changes_one_token
+  - id: seed_comments
+    description: load_seeds() must ignore blank lines and lines starting with '#'.
+    grader: test
+    test: test_hidden.py::test_seed_file_comments_ignored
+  - id: cli_targets_default
+    description: The CLI's default --targets must be the __targets__.json next to the seeds file, independent of cwd.
+    grader: test
+    test: test_hidden.py::test_cli_targets_default_next_to_seeds
+  - id: cli_budget_flag
+    description: Wire the documented --budget flag through to the scorer; the CLI must stop cleanly and print its result when the budget runs out.
+    grader: test
+    test: test_hidden.py::test_cli_budget_flag

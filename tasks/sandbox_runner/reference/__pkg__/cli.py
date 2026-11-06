@@ -7,7 +7,8 @@
 --max-output BYTES    cap each of stdout and stderr at BYTES (default 64000).
 --max-files N         maximum number of files the __SnippetNoun__ may leave in its work dir.
 --audit PATH          append a JSONL audit entry for this run to PATH.
---allow-read DIR      extra directory the __SnippetNoun__ may read from (repeatable).
+--allow-read DIR      extra directory the __SnippetNoun__ may read from (repeatable;
+                      relative paths are relative to the directory you run the CLI from).
 --json                print the RunResult as JSON instead of the human-readable summary.
 
 Exit status: 0 when the __SnippetNoun__ exited 0 with no violations, 2 when it was

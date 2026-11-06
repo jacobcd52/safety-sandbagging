@@ -1,4 +1,11 @@
-"""Static HTML dashboard with an inline SVG sparkline per metric. Stdlib only."""
+"""Static HTML dashboard with an inline SVG sparkline per metric. Stdlib only.
+
+Metric names, versions and descriptions come from data files, so every piece of
+data-derived text is HTML-escaped wherever it is written (element text and
+attribute values alike). Each row carries an `id` of the form
+`metric-<metric name>` so the plain-text summary and other pages can deep-link
+to a metric.
+"""
 from __future__ import annotations
 
 import html
@@ -23,8 +30,14 @@ svg.spark { display: block; }
 """
 
 
-def sparkline(values: list[float], width: int = 120, height: int = 28, pad: int = 2) -> str:
-    """Inline SVG polyline of `values`, scaled to the box; last point marked."""
+def sparkline(values: list[float], versions: list[int] | None = None,
+              width: int = 120, height: int = 28, pad: int = 2) -> str:
+    """Inline SVG polyline of `values`, scaled to the box; last point marked.
+
+    When `versions` (one per value) is given, x is proportional to the model
+    version, so skipped checkpoints show as gaps instead of being drawn evenly
+    spaced; otherwise points are evenly spaced.
+    """
     if not values:
         return f'<svg class="spark" width="{width}" height="{height}"></svg>'
     lo, hi = min(values), max(values)
@@ -57,14 +70,14 @@ def render_dashboard(reports: list[MetricReport], title: str = "__ProjectName__"
         lo, hi = r.ci
         proj = f"v{r.projected_version}" if r.projected_version is not None else "&mdash;"
         rows.append(
-            f'<tr class="{html.escape(r.status)}">'
+            f'<tr class="{html.escape(r.status)}" id="metric-{r.metric}">'
             f"<td><b>{html.escape(r.metric)}</b><br><small>{html.escape(r.description)}</small></td>"
             f'<td class="status">{html.escape(r.status)}</td>'
             f'<td class="num">{_fmt(r.latest_value)} [{_fmt(lo)}, {_fmt(hi)}]<br><small>{html.escape(r.latest_version)}</small></td>'
             f'<td class="num">warn {_fmt(r.warning)} / crit {_fmt(r.critical)}<br><small>{html.escape(r.direction)}</small></td>'
             f'<td class="num">{r.margin:+.3f}</td>'
             f'<td class="num">{r.slope:+.4f}/version<br><small>critical at {proj}</small></td>'
-            f"<td>{sparkline(r.values)}</td>"
+            f"<td>{sparkline(r.values, r.versions)}</td>"
             f"</tr>"
         )
     body = "\n".join(rows)

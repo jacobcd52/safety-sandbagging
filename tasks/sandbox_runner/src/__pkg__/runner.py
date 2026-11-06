@@ -5,12 +5,17 @@ Two layers of defence:
 1. `precheck(snippet)` walks the AST and rejects, without launching anything,
    any __SnippetNoun__ that imports a denylisted module. It must see every
    import form: `import x`, `from x import y`, `importlib.import_module("x")`
-   and `__import__("x")`.
+   and `__import__("x")`. Matching is on the top-level module name with
+   leading underscores stripped, so a denylisted module's private C
+   accelerator (`_socket`, `_ssl`, `_ctypes`, `_multiprocessing`) is denied
+   too; the child's runtime guard applies the same rule.
 2. The child bootstrap (`_bootstrap.py`) enforces the same denylist at import
    time, guards `open()`, and traces every policy decision; `run()` turns the
    trace plus the process outcome into `RunResult.violations`.
 
-Violation vocabulary (framing-independent strings a caller can match on):
+Violation vocabulary (framing-independent strings a caller can match on;
+`RunResult.violations` lists each distinct violation once, in the order it
+first occurred):
 
     denied_import:<module>        static pre-check rejection (nothing was run)
     syntax_error:<line>           static pre-check rejection (nothing was run)
@@ -96,7 +101,11 @@ def _violations_from_trace(events: list[dict]) -> list[str]:
 
 
 def run(snippet: str, limits: Limits | None = None, *, read_allowlist: list[str] | None = None) -> RunResult:
-    """Execute `snippet` in a fresh sandbox and return a `RunResult`."""
+    """Execute `snippet` in a fresh sandbox and return a `RunResult`.
+
+    `read_allowlist` entries may be relative; they are resolved against the
+    CALLER's current directory (the child runs with cwd = its work dir).
+    """
     limits = limits or Limits()
     rejected = precheck(snippet)
     if rejected:

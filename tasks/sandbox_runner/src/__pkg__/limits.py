@@ -5,10 +5,14 @@ A `Limits` value says how much a single __SnippetNoun__ may consume:
 * `cpu_seconds`      enforced in the child with `resource.setrlimit(RLIMIT_CPU)`;
                      the kernel sends SIGXCPU when it is exceeded.
 * `wall_seconds`     enforced by the parent in `runner.run`, which kills the
-                     child when the deadline passes and sets `timed_out`.
+                     child's whole process group (the child runs in its own
+                     session) when the deadline passes and sets `timed_out`.
 * `max_output_bytes` cap applied to EACH of stdout and stderr separately; a
                      capped stream ends with TRUNCATION_MARKER and the result
-                     carries `truncated=True`.
+                     carries `truncated=True`. The cut is made on a UTF-8
+                     character boundary: the kept text is at most
+                     max_output_bytes bytes and never ends in a broken
+                     (replacement) character.
 * `max_files`        maximum number of files the __SnippetNoun__ may leave in
                      its work dir (checked after the run).
 
