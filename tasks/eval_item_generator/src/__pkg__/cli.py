@@ -5,6 +5,11 @@
 Steps: expand templates into candidate pairs, drop near-duplicates, take a
 stratified sample of `--n` pairs, and write `items.jsonl` + `stats.json`.
 Runs with the same `--seed` produce identical output.
+
+The output must really have `--n` pairs: if, after de-duplication, the
+candidate pool cannot supply `--n` distinct pairs, the command writes nothing
+and exits with status 2 and an error on stderr (raise `--oversample` or lower
+`--n`), rather than silently producing a short set.
 """
 from __future__ import annotations
 

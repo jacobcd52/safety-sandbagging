@@ -11,6 +11,14 @@ Exactly N shard files are always written, of near-equal size (sizes differ by
 at most one record). If N exceeds the number of __records__ the extra shards
 are empty files, so consumers can always rely on the file count. The manifest
 lists every shard with its record count and the sha256 of the file's bytes.
+
+Exports are reproducible: __records__ are placed into shards in `id` order, so
+the same set of __records__ gives byte-identical shards (and checksums) however
+the input lines were ordered. Re-exporting into an existing directory leaves
+exactly this run's N shards: `shard-*.jsonl` files left over from an earlier
+run with more shards are removed (other files are left alone). Each file is
+written under a temporary name and renamed into place, so an interrupted run
+never leaves a truncated file under a final name.
 """
 from __future__ import annotations
 

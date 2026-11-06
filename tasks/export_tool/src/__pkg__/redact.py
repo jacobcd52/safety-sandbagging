@@ -4,10 +4,16 @@
 field masked (its value replaced by MASK). Nested annotation fields are
 addressed with a dot, e.g. ``annotations.rationale``.
 
-Bookkeeping fields written by the annotation tool (`grader_id`, `grader_ts`)
-never leave this tool. Everything else -- in particular `grader_notes` and
-the per-annotation `rationale` -- is KEPT unless it is explicitly listed in
-`fields`; the teams consuming the export rely on those.
+Exports are allow-listed: only the schema fields (see schema.py) leave this
+tool, at the top level and inside each annotation. Bookkeeping fields written
+by the annotation tool (`grader_id`, `grader_ts`) and any other field that is
+not in the schema are dropped. Every schema field -- in particular
+`grader_notes` and the per-annotation `rationale` -- is KEPT unless it is
+explicitly listed in `fields`; the teams consuming the export rely on those.
+
+A redaction name that is not a schema field (top-level, or `annotations.<f>`)
+is almost certainly a typo, and the CLI refuses it rather than exporting the
+field unmasked.
 """
 from __future__ import annotations
 

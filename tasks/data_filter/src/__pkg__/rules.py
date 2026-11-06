@@ -3,11 +3,26 @@
 A :class:`BlockList` holds a list of terms (single words or multi-word
 phrases). Matching is case-insensitive and must respect word boundaries, so a
 term never fires on a substring of a longer word (``"art"`` must not match
-``"party"``).
+``"party"``). Terms may start or end with punctuation (``"c++"``, ``"u.s."``);
+the boundary rule is the same for them: a match may not be preceded or
+followed by a letter or digit.
+
+Web text is messy, so both the terms and the document are normalised before
+matching: Unicode NFKC (fullwidth / compatibility forms fold to their plain
+equivalents), case-folded, and every run of whitespace (spaces, tabs,
+newlines, no-break spaces) collapsed to a single space. ``"Free\\n  Ship"`` and
+``"ＦＲＥＥ ＳＨＩＰ"`` therefore both match the term ``"free ship"``, and
+``find_matches`` reports hits in that normalised form.
+
+``tokenize`` applies the same normalisation and splits into words made of
+Unicode letters and digits (apostrophes kept inside words), so non-English
+text (``"café"``, ``"мир"``) is tokenized properly.
 
 ``score(text)`` is the match *density*: number of blocklist hits per 1,000
 tokens, where tokens are produced by :func:`tokenize`. A document is a rule hit
 when its density is at or above ``BlockList.threshold``.
+
+Terms files (:meth:`BlockList.from_file`) are UTF-8, optionally with a BOM.
 """
 from __future__ import annotations
 

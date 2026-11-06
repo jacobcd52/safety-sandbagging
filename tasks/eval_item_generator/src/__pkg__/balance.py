@@ -20,9 +20,11 @@ def stratum_of(pair: ItemPair) -> tuple[str, str]:
 def stratified_sample(pairs: list[ItemPair], n: int, rng: random.Random) -> list[ItemPair]:
     """Pick up to `n` pairs, spread as evenly as possible across strata.
 
-    Each stratum is shuffled with `rng` before taking its quota. Strata with
-    fewer pairs than their quota contribute what they have, so the result can
-    be shorter than `n`.
+    Each stratum is shuffled with `rng` before taking its quota. A stratum with
+    fewer pairs than its quota contributes all it has and the shortfall is
+    redistributed over the strata that still have pairs left (water-filling), so
+    the result always has `min(n, len(pairs))` pairs and, among strata that were
+    not exhausted, counts differ by at most one.
     """
     if n <= 0 or not pairs:
         return []

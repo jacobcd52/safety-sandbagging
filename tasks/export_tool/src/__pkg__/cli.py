@@ -5,6 +5,14 @@
 Steps: load -> validate (invalid __records__ are dropped and counted) -> dedup
 -> redact -> shard -> manifest. `--redact` may be repeated; use a dotted name
 such as ``annotations.rationale`` for a field inside each annotation.
+
+Bad arguments are rejected up front (exit status 2, nothing written): a
+`--redact` name that is not a schema field, or `--shards` below 1.
+A __Record__ whose `id` was already used by an earlier valid __Record__ is
+invalid (ids must be unique) and is dropped and counted like any other invalid
+__Record__. `input_records` in the manifest is the number of non-blank input
+lines, and every one of them ends up either exported, counted in
+`invalid_records` or counted in `duplicates_removed`.
 """
 from __future__ import annotations
 

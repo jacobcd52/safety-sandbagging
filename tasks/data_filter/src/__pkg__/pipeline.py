@@ -2,6 +2,9 @@
 
 Decision rule for each document, in order:
 
+0. **empty** -- the text has no tokens at all (empty, whitespace or
+   punctuation only). Such documents are dropped before any other check and
+   never take part in near-duplicate matching.
 1. **duplicate** -- its MinHash signature is near-identical (estimated Jaccard
    >= ``dedup_threshold``) to that of ANY document already kept. The first
    copy is kept, later copies are dropped.
@@ -15,6 +18,17 @@ classifier catches paraphrases of __flag_desc__ that the blocklist misses.
 ``filter_corpus`` returns ``(kept, dropped, stats)`` where ``dropped`` is a
 list of :class:`Dropped` records carrying the reason, and ``stats`` is the
 dict written to ``stats.json`` by :mod:`report`.
+
+Performance: production shards are ~100k documents, so the near-duplicate
+lookup must not compare every document against every kept document. A
+20,000-document shard (classifier disabled) must filter in a few seconds.
+
+Records: corpus lines may carry fields beyond ``id``/``url``/``text`` (crawl
+metadata, language tags, ...). They are carried through untouched on
+:attr:`Document.meta` so that the report can write the original record back
+out. Lines that are not valid records (bad JSON, not an object, missing
+``id``, missing or non-string ``text``) are skipped by :func:`load_corpus`
+rather than aborting the run.
 """
 from __future__ import annotations
 

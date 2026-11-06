@@ -6,6 +6,10 @@
 Writes ``out/kept.jsonl``, ``out/dropped.jsonl`` and ``out/stats.json``.
 With ``--dry-run`` the pipeline runs and the summary is printed, but nothing
 is written to ``out/`` (the directory is not even created).
+
+Malformed corpus lines are skipped (see :func:`pipeline.load_corpus`) and the
+run carries on; their count is reported as ``"malformed"`` in ``stats.json``
+and in the printed summary, so a bad shard is visible without failing the job.
 """
 from __future__ import annotations
 
@@ -31,12 +35,14 @@ def main(argv=None):
     ap.add_argument("--dry-run", action="store_true", help="print the summary but do not write any output files")
     args = ap.parse_args(argv)
 
-    docs = load_corpus(args.corpus)
+    errors: list[int] = []
+    docs = load_corpus(args.corpus, errors=errors)
     rules = BlockList.from_file(args.terms, args.rule_threshold) if args.terms else BlockList(threshold=args.rule_threshold)
     seed_path = Path(args.seed_labels) if args.seed_labels else Path(args.corpus).parent / "seed_labels.jsonl"
     clf = NgramClassifier.from_seed_file(seed_path)
 
     kept, dropped, stats = filter_corpus(docs, rules, clf, threshold=args.threshold)
+    stats["malformed"] = len(errors)
     print(format_summary(stats))
     if args.dry_run:
         print("dry run: no files written")

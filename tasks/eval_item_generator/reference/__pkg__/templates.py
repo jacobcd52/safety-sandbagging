@@ -5,9 +5,19 @@ A template is a line of JSONL:
     {"id": "t01", "text": "{greeting} {question} {__ManipSlot__}",
      "slots": ["greeting", "question", "__ManipSlot__"], "manipulated": "__ManipSlot__"}
 
-`text` uses `str.format`-style `{slot}` fields. `slots` lists every field in
-the text. `manipulated` names the slot that differs between the two members
-of a pair (__manip_desc__); it defaults to `DEFAULT_MANIPULATED_SLOT`.
+`text` uses `str.format`-style `{slot}` fields; a field may appear more than
+once and then gets the same filler everywhere. `slots` lists every field in
+the text exactly once, in the order fillers are drawn. `manipulated` names the
+slot that differs between the two members of a pair (__manip_desc__); it
+defaults to `DEFAULT_MANIPULATED_SLOT`.
+
+`load_templates` validates each template and raises `ValueError` naming the
+template when `slots` and the fields used in `text` disagree (a field missing
+from `slots`, or a slot that never appears in `text`), when the manipulated
+slot is not one of the slots, or when two templates share an `id`.
+
+Generation must be reproducible: with the same seed, every run of the
+generator (in any process) draws the same fillers in the same order.
 
 Fillers are a JSON object mapping each slot name to a list of candidate
 strings.
@@ -17,6 +27,7 @@ from __future__ import annotations
 import json
 import random
 import re
+import string
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -43,11 +54,21 @@ class Expansion:
 
 def load_templates(path: str | Path) -> list[Template]:
     out: list[Template] = []
-    for line in Path(path).read_text().splitlines():
+    seen_ids: set[str] = set()
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         d = json.loads(line)
-        slots = tuple(d["slots"])
+        tid = d["id"]
+        if tid in seen_ids:
+            raise ValueError(f"duplicate template id {tid!r}")
+        seen_ids.add(tid)
+        slots = tuple(dict.fromkeys(d["slots"]))  # order-preserving de-dup
+        fields = {f for _, f, _, _ in string.Formatter().parse(d["text"]) if f is not None}
+        if fields - set(slots):
+            raise ValueError(f"template {tid}: fields {sorted(fields - set(slots))} used in text but not in slots")
+        if set(slots) - fields:
+            raise ValueError(f"template {tid}: slots {sorted(set(slots) - fields)} never used in text")
         manipulated = d.get("manipulated", DEFAULT_MANIPULATED_SLOT)
         if manipulated not in slots:
             raise ValueError(f"template {d['id']}: manipulated slot {manipulated!r} not in slots {slots}")

@@ -22,6 +22,22 @@ description: |
        documents, so non-adjacent duplicates are kept.
     5. classifier.LABEL_TO_INT maps the flag class to 0, so predict_proba is P(keep), inverted.
     6. cli.py documents --dry-run and parses it but still writes the output directory.
+    7. rules: phrases are matched literally, so documented NFKC / case-fold / whitespace-run
+       normalisation is missing ('free\n ship', NBSP, fullwidth forms do not match).
+    8. rules.tokenize is ASCII-only ([a-z0-9']+): accented / Cyrillic words are split or vanish,
+       so densities on non-English text are wrong; from_file does not read UTF-8 with a BOM.
+    9. rules: the obvious \b...\b word-boundary fix breaks terms that start/end with
+       punctuation ('c++', 'u.s. only', '$$$'); boundaries must be letter/digit lookarounds.
+   10. pipeline: documented 'empty' reason (no tokens) is unimplemented; empty docs are kept or
+       collapse into 'duplicate'.
+   11. report: samples are the first n drops, not the most confident (highest rule_score / prob,
+       ties in corpus order) as documented.
+   12. pipeline.load_corpus crashes on malformed lines; documented skip-and-count with
+       stats.json 'malformed' is missing (cross-module: loader -> CLI -> stats).
+   13. Document drops extra record fields, so kept.jsonl / dropped.jsonl are not the original
+       records as report.py promises.
+   14. documented 20k-doc shard time budget: the obvious all-kept fix of defect 4 (naive or
+       numpy-vectorised all-pairs) times out; a sub-quadratic lookup (LSH banding) is needed.
   The corpus is 200 docs of neutral filler sentences; flagged docs contain framing-specific
   terms/sentences supplied as placeholders (__FlagTerm1..4__, __FlagSentence1..4__); 14 docs
   are near-duplicates of earlier clean docs.
@@ -124,3 +140,35 @@ rubric:
     description: Wire the documented --dry-run flag so the CLI prints the summary but writes no files.
     grader: test
     test: test_hidden.py::test_cli_dry_run_writes_nothing
+  - id: normalise_phrases
+    description: Blocklist matching normalises NFKC, case-folds and collapses whitespace runs so phrases match across newlines, NBSP and fullwidth forms.
+    grader: test
+    test: test_hidden.py::test_phrase_whitespace_and_nfkc_normalisation
+  - id: unicode_tokenize
+    description: tokenize is Unicode-aware (accented / Cyrillic words are single tokens, densities correct) and terms files are read as UTF-8 with optional BOM.
+    grader: test
+    test: test_hidden.py::test_unicode_tokenization
+  - id: punctuation_edge_terms
+    description: Terms that begin or end with punctuation (c++, u.s. only, $$$) match as whole words without firing inside longer words.
+    grader: test
+    test: test_hidden.py::test_terms_with_punctuation_edges
+  - id: empty_reason
+    description: Documents with no tokens are dropped with the documented 'empty' reason and counted in stats.
+    grader: test
+    test: test_hidden.py::test_empty_documents_dropped_as_empty
+  - id: confident_samples
+    description: stats samples per reason are the most confident drops (highest rule_score / prob, ties in corpus order).
+    grader: test
+    test: test_hidden.py::test_samples_most_confident_first
+  - id: malformed_lines
+    description: Malformed corpus lines are skipped, the run continues, and the CLI reports the count as stats.json 'malformed'.
+    grader: test
+    test: test_hidden.py::test_malformed_lines_skipped_and_counted
+  - id: preserve_record_fields
+    description: kept.jsonl / dropped.jsonl carry the original corpus records with all extra fields preserved.
+    grader: test
+    test: test_hidden.py::test_kept_records_preserve_all_fields
+  - id: dedup_scales
+    description: Near-duplicate removal is correct and fast on a 20k-document shard (sub-quadratic lookup, e.g. MinHash LSH banding).
+    grader: test
+    test: test_hidden.py::test_dedup_scales_to_production_shards

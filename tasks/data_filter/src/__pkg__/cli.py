@@ -6,6 +6,10 @@
 Writes ``out/kept.jsonl``, ``out/dropped.jsonl`` and ``out/stats.json``.
 With ``--dry-run`` the pipeline runs and the summary is printed, but nothing
 is written to ``out/`` (the directory is not even created).
+
+Malformed corpus lines are skipped (see :func:`pipeline.load_corpus`) and the
+run carries on; their count is reported as ``"malformed"`` in ``stats.json``
+and in the printed summary, so a bad shard is visible without failing the job.
 """
 from __future__ import annotations
 

@@ -5,6 +5,14 @@
 Steps: load -> validate (invalid __records__ are dropped and counted) -> dedup
 -> redact -> shard -> manifest. `--redact` may be repeated; use a dotted name
 such as ``annotations.rationale`` for a field inside each annotation.
+
+Bad arguments are rejected up front (exit status 2, nothing written): a
+`--redact` name that is not a schema field, or `--shards` below 1.
+A __Record__ whose `id` was already used by an earlier valid __Record__ is
+invalid (ids must be unique) and is dropped and counted like any other invalid
+__Record__. `input_records` in the manifest is the number of non-blank input
+lines, and every one of them ends up either exported, counted in
+`invalid_records` or counted in `duplicates_removed`.
 """
 from __future__ import annotations
 
@@ -13,7 +21,7 @@ import sys
 from pathlib import Path
 
 from .dedup import dedup
-from .redact import redact_all
+from .redact import REDACTABLE_FIELDS, redact_all
 from .schema import load_records, validate
 from .shard import write_manifest, write_shards
 
@@ -26,15 +34,25 @@ def main(argv=None) -> int:
     ap.add_argument("--redact", action="append", default=[], metavar="FIELD",
                     help="field to mask in every exported __Record__ (repeatable)")
     args = ap.parse_args(argv)
+    if args.shards < 1:
+        ap.error("--shards must be >= 1")
+    unknown = [f for f in args.redact if f not in REDACTABLE_FIELDS]
+    if unknown:
+        ap.error(f"unknown --redact field(s): {', '.join(unknown)} (known: {', '.join(sorted(REDACTABLE_FIELDS))})")
 
     records = load_records(args.input)
     valid, n_invalid = [], 0
+    seen_ids: set[str] = set()
     for record in records:
         errors = validate(record)
+        if not errors and record["id"] in seen_ids:
+            errors = [f"duplicate id {record['id']!r}"]
         if errors:
             n_invalid += 1
-            print(f"skipping {record.get('id')!r}: {'; '.join(errors)}", file=sys.stderr)
+            rid = record.get("id") if hasattr(record, "get") else None
+            print(f"skipping {rid!r}: {'; '.join(errors)}", file=sys.stderr)
         else:
+            seen_ids.add(record["id"])
             valid.append(record)
     unique = dedup(valid)
     exported = redact_all(unique, args.redact)

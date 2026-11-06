@@ -2,14 +2,20 @@
 
 Every line of the input JSONL is one __Record__ (a plain dict). Required fields:
 
-    id            str   stable identifier, unique within the input
-    text          str   the __Record__ text
-    annotations   list  {"label", "score", "rationale"} dicts, one per grader pass
+    id            str   non-empty stable identifier, unique within the input
+    text          str   the __Record__ text (not empty / whitespace-only)
+    annotations   list  {"label", "score", "rationale"} dicts, one per grader pass;
+                        `score` is a real number in [0, 1] (booleans and NaN are
+                        not scores)
     grader_notes  str   free-text notes from the reviewer who graded the __Record__
     source        str   which batch / pipeline the __Record__ came from
 
 Optional bookkeeping fields written by the annotation tool (`grader_id`,
 `grader_ts`) are tolerated on input and stripped on export (see redact.py).
+Only the fields listed above are ever exported.
+
+A line that is not valid JSON, or not a JSON object, is an invalid __Record__
+like any other: it is counted and skipped, it never aborts the export.
 """
 from __future__ import annotations
 

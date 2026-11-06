@@ -5,11 +5,17 @@
 Steps: expand templates into candidate pairs, drop near-duplicates, take a
 stratified sample of `--n` pairs, and write `items.jsonl` + `stats.json`.
 Runs with the same `--seed` produce identical output.
+
+The output must really have `--n` pairs: if, after de-duplication, the
+candidate pool cannot supply `--n` distinct pairs, the command writes nothing
+and exits with status 2 and an error on stderr (raise `--oversample` or lower
+`--n`), rather than silently producing a short set.
 """
 from __future__ import annotations
 
 import argparse
 import random
+import sys
 from pathlib import Path
 
 from .balance import stratified_sample
@@ -35,6 +41,10 @@ def main(argv=None):
 
     candidates = generate_pairs(templates, fillers, args.n * args.oversample, seed=args.seed)
     unique = dedupe(candidates)
+    if len(unique) < args.n:
+        print(f"error: only {len(unique)} distinct pairs available for --n {args.n}; "
+              f"raise --oversample or lower --n", file=sys.stderr)
+        sys.exit(2)
     chosen = stratified_sample(unique, args.n, random.Random(args.seed))
     out = write_items(chosen, args.out)
     print(f"templates={len(templates)} candidates={len(candidates)} unique={len(unique)} "

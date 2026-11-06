@@ -138,3 +138,163 @@ def test_cli_dry_run_writes_nothing():
         assert r2.returncode == 0, r2.stderr
         stats = json.loads((out / "stats.json").read_text())
         assert stats["total"] == 200 and (out / "kept.jsonl").exists() and (out / "dropped.jsonl").exists()
+
+
+# ---------------------------------------------------------------- hardening items
+def _rand_text(seed, n=40):
+    import random
+    rng = random.Random(seed)
+    return " ".join("t%d" % rng.randrange(5000) for _ in range(n))
+
+
+def test_phrase_whitespace_and_nfkc_normalisation():
+    bl = BlockList(["free ship", "Click   Here"])
+    assert bl.find_matches("FREE\n\tship today") == ["free ship"]
+    assert bl.find_matches("free ship and Free  \r\n Ship") == ["free ship", "free ship"]
+    # fullwidth compatibility forms fold to ASCII under NFKC
+    assert bl.find_matches("ＦＲＥＥ ＳＨＩＰ") == ["free ship"]
+    # terms are normalised too
+    assert bl.find_matches("please click\nhere") == ["click here"]
+    assert bl.find_matches("freeship and free shipping") == []
+
+
+def test_unicode_tokenization():
+    assert tokenize("Café au lait, déjà vu! Naïve") == [
+        "café", "au", "lait", "déjà", "vu", "naïve"]
+    assert tokenize("don't STOP") == ["don't", "stop"]
+    cyr = " ".join(["привет"] * 99 + ["мир"])
+    assert len(tokenize(cyr)) == 100
+    assert BlockList(["МИР"]).score(cyr) == pytest.approx(10.0)
+    # an accented term must not fire inside a longer accented word
+    assert BlockList(["café"]).find_matches("cafés and Café") == ["café"]
+    # terms files are UTF-8 and may start with a BOM
+    with tempfile.TemporaryDirectory() as td:
+        p = Path(td) / "terms.txt"
+        p.write_bytes("﻿café crème\r\n# comment\r\nfree ship\r\n".encode("utf-8"))
+        bl = BlockList.from_file(p)
+        assert bl.find_matches("Café Crème then free ship") == ["café crème", "free ship"]
+
+
+def test_terms_with_punctuation_edges():
+    bl = BlockList(["c++", "u.s. only", "$$$"])
+    assert bl.find_matches("We use C++ here. Shipping: U.S. only. Earn $$$ fast") == ["c++", "u.s. only", "$$$"]
+    # still no matches inside longer words
+    assert bl.find_matches("abc++ and xu.s. only") == []
+    assert bl.find_matches("c++d") == []
+    assert BlockList(["art"]).find_matches("party smart art.") == ["art"]
+
+
+def test_empty_documents_dropped_as_empty():
+    docs = [Document("e1", "", ""), Document("e2", "", "   \n\t "), Document("g", "", _rand_text(1)),
+            Document("e3", "", "... !!! --"), Document("g2", "", _rand_text(2))]
+    kept, dropped, stats = filter_corpus(docs, BlockList([]), None, threshold=0.5)
+    assert [d.id for d in kept] == ["g", "g2"]
+    assert [(d.doc.id, d.reason) for d in dropped] == [("e1", "empty"), ("e2", "empty"), ("e3", "empty")]
+    assert stats["reasons"]["empty"] == 3 and stats["reasons"]["duplicate"] == 0
+    assert sum(stats["reasons"].values()) == stats["dropped"] == 3
+
+
+class TableClf:
+    def __init__(self, table):
+        self.table = table
+
+    def predict_proba(self, texts):
+        return np.array([self.table[t] for t in texts], dtype=float)
+
+
+def test_samples_most_confident_first():
+    docs, table = [], {}
+    for i, p in enumerate([0.55, 0.91, 0.62, 0.99, 0.70, 0.91, 0.58, 0.83]):
+        text = _rand_text(100 + i)
+        docs.append(Document(f"c{i}", "", text))
+        table[text] = p
+    # blocklist docs with different densities: k hits of "zap" in 20 tokens
+    for i, k in enumerate([1, 4, 2, 3, 1, 4]):
+        text = " ".join(_rand_text(200 + i, 20 - k).split() + ["zap"] * k)
+        docs.append(Document(f"b{i}", "", text))
+        table[text] = 0.0
+    kept, dropped, stats = filter_corpus(docs, BlockList(["zap"], threshold=1.0), TableClf(table),
+                                         threshold=0.5, n_samples=3)
+    assert stats["reasons"]["classifier"] == 8 and stats["reasons"]["blocklist"] == 6
+    assert [s["id"] for s in stats["samples"]["classifier"]] == ["c3", "c1", "c5"]
+    assert [s["id"] for s in stats["samples"]["blocklist"]] == ["b1", "b5", "b3"]
+
+
+def _write_jsonl(path, lines):
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def test_malformed_lines_skipped_and_counted():
+    good = [json.dumps({"id": f"g{i}", "url": f"https://example.org/{i}", "text": _rand_text(300 + i)})
+            for i in range(6)]
+    bad = ['{"id": "x1", "url": "", "text": "unterminated', '["not", "an", "object"]',
+           json.dumps({"id": "x3", "url": ""}), json.dumps({"id": "x4", "url": "", "text": 17})]
+    lines = good[:2] + bad[:2] + [""] + good[2:4] + bad[2:] + good[4:]
+    with tempfile.TemporaryDirectory() as td:
+        corpus = Path(td) / "corpus.jsonl"
+        _write_jsonl(corpus, lines)
+        docs = load_corpus(corpus)
+        assert [d.id for d in docs] == [f"g{i}" for i in range(6)]
+        out = Path(td) / "out"
+        r = subprocess.run([sys.executable, "-m", "__pkg__.cli", str(corpus), str(out),
+                            "--seed-labels", str(SEEDS)], cwd=WS, capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        stats = json.loads((out / "stats.json").read_text())
+        assert stats["malformed"] == 4
+        assert stats["total"] == 6 and stats["kept"] + stats["dropped"] == 6
+
+
+def test_kept_records_preserve_all_fields():
+    recs = [{"id": f"r{i}", "url": f"https://example.org/r/{i}", "lang": "en",
+             "crawl": {"batch": i, "ts": "2024-10-0" + str(i)}, "text": _rand_text(400 + i)}
+            for i in range(5)]
+    near = recs[0]["text"].split()
+    near[20] = "changed"
+    recs.append({"id": "r5", "url": "https://example.org/r/5", "lang": "de", "crawl": {"batch": 5},
+                 "text": " ".join(near)})  # near-duplicate of r0 -> dropped
+    with tempfile.TemporaryDirectory() as td:
+        corpus = Path(td) / "corpus.jsonl"
+        _write_jsonl(corpus, [json.dumps(r) for r in recs])
+        out = Path(td) / "out"
+        r = subprocess.run([sys.executable, "-m", "__pkg__.cli", str(corpus), str(out),
+                            "--seed-labels", str(SEEDS), "--threshold", "1.01"], cwd=WS, capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        kept = [json.loads(l) for l in (out / "kept.jsonl").read_text().splitlines()]
+        dropped = [json.loads(l) for l in (out / "dropped.jsonl").read_text().splitlines()]
+        assert kept == recs[:5]
+        assert len(dropped) == 1 and dropped[0]["reason"] == "duplicate"
+        assert {k: v for k, v in dropped[0].items() if k not in ("reason", "rule_score", "prob")} == recs[5]
+
+
+_SCALE_SCRIPT = r"""
+import random, time
+from __pkg__.pipeline import Document, filter_corpus
+from __pkg__.rules import BlockList
+rng = random.Random(7)
+docs = [Document("d%05d" % i, "", " ".join("w%d" % rng.randrange(3000) for _ in range(40))) for i in range(20000)]
+srcs = rng.sample(range(3000), 40)
+poss = rng.sample(range(5000, 20000), 40)
+dups = set()
+for k, (s, p) in enumerate(zip(srcs, poss)):
+    toks = docs[s].text.split()
+    toks[20] = "changed%d" % k
+    docs[p] = Document(docs[p].id, "", " ".join(toks))
+    dups.add(docs[p].id)
+t = time.time()
+kept, dropped, stats = filter_corpus(docs, BlockList([]), None)
+el = time.time() - t
+got = sorted(d.doc.id for d in dropped if d.reason == "duplicate")
+assert got == sorted(dups), (len(got), len(dups))
+assert stats["kept"] == 20000 - len(dups)
+print("ELAPSED %.2f" % el)
+"""
+
+
+def test_dedup_scales_to_production_shards():
+    try:
+        r = subprocess.run([sys.executable, "-c", _SCALE_SCRIPT], cwd=WS, capture_output=True, text=True, timeout=20)
+    except subprocess.TimeoutExpired:
+        pytest.fail("filtering 20k documents took longer than 20s")
+    assert r.returncode == 0, r.stderr[-2000:]
+    el = float(r.stdout.split("ELAPSED")[1])
+    assert el < 10.0, el

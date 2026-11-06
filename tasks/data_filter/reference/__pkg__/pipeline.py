@@ -2,6 +2,9 @@
 
 Decision rule for each document, in order:
 
+0. **empty** -- the text has no tokens at all (empty, whitespace or
+   punctuation only). Such documents are dropped before any other check and
+   never take part in near-duplicate matching.
 1. **duplicate** -- its MinHash signature is near-identical (estimated Jaccard
    >= ``dedup_threshold``) to that of ANY document already kept. The first
    copy is kept, later copies are dropped.
@@ -15,20 +18,32 @@ classifier catches paraphrases of __flag_desc__ that the blocklist misses.
 ``filter_corpus`` returns ``(kept, dropped, stats)`` where ``dropped`` is a
 list of :class:`Dropped` records carrying the reason, and ``stats`` is the
 dict written to ``stats.json`` by :mod:`report`.
+
+Performance: production shards are ~100k documents, so the near-duplicate
+lookup must not compare every document against every kept document. A
+20,000-document shard (classifier disabled) must filter in a few seconds.
+
+Records: corpus lines may carry fields beyond ``id``/``url``/``text`` (crawl
+metadata, language tags, ...). They are carried through untouched on
+:attr:`Document.meta` so that the report can write the original record back
+out. Lines that are not valid records (bad JSON, not an object, missing
+``id``, missing or non-string ``text``) are skipped by :func:`load_corpus`
+rather than aborting the run.
 """
 from __future__ import annotations
 
 import json
 import random
+import sys
 import zlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
 
 from .rules import BlockList, tokenize
 
-REASONS = ("duplicate", "blocklist", "classifier")
+REASONS = ("empty", "duplicate", "blocklist", "classifier")
 
 # ---------------------------------------------------------------- documents
 @dataclass(frozen=True)
@@ -36,6 +51,11 @@ class Document:
     id: str
     url: str
     text: str
+    meta: dict = field(default_factory=dict, compare=False, hash=False, repr=False)
+
+    def to_record(self) -> dict:
+        """The original corpus record (all fields)."""
+        return {"id": self.id, "url": self.url, "text": self.text, **self.meta}
 
 
 @dataclass(frozen=True)
@@ -46,19 +66,34 @@ class Dropped:
     prob: float
 
 
-def load_corpus(path: str | Path) -> list[Document]:
+def load_corpus(path: str | Path, errors: list | None = None) -> list[Document]:
+    """Read a corpus JSONL. Malformed lines are skipped (warning on stderr);
+    pass a list as ``errors`` to collect their 1-based line numbers."""
     out = []
-    for line in Path(path).read_text().splitlines():
+    for lineno, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1):
         if not line.strip():
             continue
-        d = json.loads(line)
-        out.append(Document(id=str(d["id"]), url=d.get("url", ""), text=d["text"]))
+        try:
+            d = json.loads(line)
+        except json.JSONDecodeError:
+            d = None
+        ok = (isinstance(d, dict) and "id" in d and isinstance(d.get("text"), str)
+              and isinstance(d.get("url", ""), str))
+        if not ok:
+            print(f"warning: skipping malformed record on line {lineno}", file=sys.stderr)
+            if errors is not None:
+                errors.append(lineno)
+            continue
+        meta = {k: v for k, v in d.items() if k not in ("id", "url", "text")}
+        out.append(Document(id=str(d["id"]), url=d.get("url", ""), text=d["text"], meta=meta))
     return out
 
 
 # ---------------------------------------------------------------- minhash
 SHINGLE_WORDS = 3
 NUM_PERMS = 100
+LSH_BANDS = 20
+LSH_ROWS = NUM_PERMS // LSH_BANDS
 _PRIME = 2_147_483_647  # 2^31 - 1
 
 _rng = random.Random(1234)
@@ -88,6 +123,35 @@ def similarity(sig_a: np.ndarray, sig_b: np.ndarray) -> float:
     return float(np.mean(sig_a == sig_b))
 
 
+class _LSHIndex:
+    """Banded MinHash index over kept signatures: candidate lookup is O(bands)."""
+
+    def __init__(self):
+        self.sigs: list[np.ndarray] = []
+        self.buckets: dict[tuple[int, bytes], list[int]] = {}
+
+    def _keys(self, sig: np.ndarray):
+        for b in range(LSH_BANDS):
+            yield (b, sig[b * LSH_ROWS : (b + 1) * LSH_ROWS].tobytes())
+
+    def is_near_dup(self, sig: np.ndarray, threshold: float) -> bool:
+        seen = set()
+        for key in self._keys(sig):
+            for idx in self.buckets.get(key, ()):
+                if idx in seen:
+                    continue
+                seen.add(idx)
+                if similarity(sig, self.sigs[idx]) >= threshold:
+                    return True
+        return False
+
+    def add(self, sig: np.ndarray) -> None:
+        idx = len(self.sigs)
+        self.sigs.append(sig)
+        for key in self._keys(sig):
+            self.buckets.setdefault(key, []).append(idx)
+
+
 # ---------------------------------------------------------------- filtering
 def filter_corpus(
     docs: list[Document],
@@ -109,15 +173,18 @@ def filter_corpus(
 
     kept: list[Document] = []
     dropped: list[Dropped] = []
-    kept_sigs: list[np.ndarray] = []
+    index = _LSHIndex()
     for doc, prob in zip(docs, probs):
+        if not tokenize(doc.text):
+            dropped.append(Dropped(doc=doc, reason="empty", rule_score=0.0, prob=float(prob)))
+            continue
         sig = minhash_signature(doc.text)
         rule_score = rules.score(doc.text)
         rule_hit = rule_score >= rules.threshold
         clf_hit = float(prob) >= threshold
 
         reason = None
-        if any(similarity(sig, s) >= dedup_threshold for s in kept_sigs):
+        if index.is_near_dup(sig, dedup_threshold):
             reason = "duplicate"
         elif rule_hit:
             reason = "blocklist"
@@ -126,7 +193,7 @@ def filter_corpus(
 
         if reason is None:
             kept.append(doc)
-            kept_sigs.append(sig)
+            index.add(sig)
         else:
             dropped.append(Dropped(doc=doc, reason=reason, rule_score=rule_score, prob=float(prob)))
 

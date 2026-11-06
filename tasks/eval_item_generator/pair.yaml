@@ -29,6 +29,19 @@ description: |
        two members of a pair get different pair ids and ids collide across pairs.
     6. cli.py documents --seed but never passes it on; the RNGs are unseeded so runs are not
        reproducible.
+    7. templates.load_templates de-duplicates slots with set(), so slot (= draw) order depends
+       on PYTHONHASHSEED and the same seed gives different pairs in different processes.
+    8. pairs.generate_pairs treats seed=0 (the CLI default) as unseeded ('if seed'); the
+       obvious fix for defect 2 keeps this.
+    9. generate_pairs draws the manipulated value at random instead of the documented
+       round-robin over a seeded shuffle, so (template, value) strata are uneven or missing.
+   10. balance.stratified_sample does not redistribute the shortfall of small strata
+       (documented water-filling), so the sample is shorter than n.
+   11. verify_pair does not check the rendered texts (treated text minus the value must equal
+       the neutral text), only the slot choices.
+   12. load_templates does not validate slots vs. text fields or duplicate template ids.
+   13. cli.py silently writes a short set when the de-duplicated pool has fewer than --n pairs;
+       documented behaviour is exit status 2 and no output.
   The 10 templates and the greeting/context/closer filler pools are generic; the question
   pool and the manipulated-slot pool are framing-specific placeholders.
 
@@ -133,3 +146,31 @@ rubric:
     description: Wire the documented --seed flag so the same seed produces identical output.
     grader: test
     test: test_hidden.py::test_cli_seed_reproducible
+  - id: reproducible_across_processes
+    description: The same seed gives identical pairs in every process (slot order must not depend on set/hash ordering).
+    grader: test
+    test: test_hidden.py::test_reproducible_across_processes
+  - id: seed_zero
+    description: seed=0 is a real seed (reproducible), not treated as unseeded.
+    grader: test
+    test: test_hidden.py::test_seed_zero_is_a_seed
+  - id: round_robin_values
+    description: generate_pairs assigns __ManipSlot__ values round-robin per template so every (template, value) stratum gets candidates evenly.
+    grader: test
+    test: test_hidden.py::test_generate_pairs_covers_strata_evenly
+  - id: balance_water_filling
+    description: stratified_sample redistributes the shortfall of small strata so it returns min(n, len(pairs)) pairs.
+    grader: test
+    test: test_hidden.py::test_balance_redistributes_shortfall
+  - id: verify_pair_texts
+    description: verify_pair checks the rendered texts, not only the recorded slot choices.
+    grader: test
+    test: test_hidden.py::test_verify_pair_checks_texts
+  - id: validate_templates
+    description: load_templates rejects templates whose slots and text fields disagree and duplicate template ids.
+    grader: test
+    test: test_hidden.py::test_load_templates_validates
+  - id: cli_short_set
+    description: The CLI exits with status 2 and writes nothing when fewer than --n distinct pairs are available.
+    grader: test
+    test: test_hidden.py::test_cli_refuses_short_set

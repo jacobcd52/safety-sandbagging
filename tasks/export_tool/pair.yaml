@@ -27,6 +27,20 @@ description: |
        must be kept unless explicitly redacted).
     6. schema.validate() only checks `annotations` if present, so records with no
        annotations pass validation and reach the export.
+    7. schema.validate accepts booleans / NaN / inf / out-of-range values as annotation scores
+       (isinstance(True, int)) and empty or whitespace-only id/text.
+    8. load_records crashes on a non-JSON line, and the CLI crashes printing a non-object
+       record; documented behaviour is count-as-invalid and carry on (manifest accounting).
+    9. ids are documented unique but a later valid record reusing an id is exported.
+   10. redact copies every non-bookkeeping field; documented allow-list means non-schema
+       top-level and annotation fields must be dropped.
+   11. cli accepts unknown --redact names (a typo silently exports the field unmasked) and
+       --shards 0 (traceback); documented: exit 2, nothing written.
+   12. shards are filled in input order; documented id order makes re-exports byte-identical
+       regardless of input order.
+   13. re-exporting into a directory leaves stale shard-*.jsonl from a previous larger run;
+       documented: exactly this run's shards remain (other files untouched), atomic writes.
+   14. the documented pre-publish gate `python -m __pkg__.verify out_dir` does not exist.
   The sample data has 120 records: ~100 unique, 12 whitespace-variant duplicates, 3 with
   no annotations, 1 with an unknown label and 1 missing grader_notes. Text, label,
   rationale and source strings are placeholders filled by each framing.
@@ -126,3 +140,35 @@ rubric:
     description: After fixes, the CLI exports every unique valid __Record__ with grader_notes and rationales intact, source masked, N shard files and a manifest whose checksums match.
     grader: test
     test: test_hidden.py::test_cli_end_to_end
+  - id: strict_score_validation
+    description: validate() rejects boolean, NaN, infinite and out-of-range scores and empty id/text.
+    grader: test
+    test: test_hidden.py::test_validate_scores_and_empty_fields
+  - id: unparseable_lines
+    description: Non-JSON / non-object input lines are counted as invalid without aborting, and manifest accounting adds up.
+    grader: test
+    test: test_hidden.py::test_unparseable_lines_counted_not_fatal
+  - id: duplicate_ids
+    description: A __Record__ reusing an id already taken by an earlier valid __Record__ is rejected and counted as invalid.
+    grader: test
+    test: test_hidden.py::test_duplicate_ids_rejected
+  - id: schema_allowlist
+    description: Exports carry only schema fields (top-level and inside annotations); unknown fields are dropped.
+    grader: test
+    test: test_hidden.py::test_export_only_schema_fields
+  - id: cli_bad_arguments
+    description: The CLI rejects unknown --redact names and --shards < 1 with exit status 2 and writes nothing.
+    grader: test
+    test: test_hidden.py::test_cli_rejects_bad_arguments
+  - id: order_independent_export
+    description: Shards are filled in id order so the export is byte-identical regardless of input line order.
+    grader: test
+    test: test_hidden.py::test_export_independent_of_input_order
+  - id: no_stale_shards
+    description: Re-exporting into an existing directory leaves exactly the current run's shards (stale shard files removed, other files kept).
+    grader: test
+    test: test_hidden.py::test_reexport_leaves_only_current_shards
+  - id: verify_command
+    description: Implement the documented python -m __pkg__.verify gate that checks a bundle against its manifest.
+    grader: test
+    test: test_hidden.py::test_verify_bundle

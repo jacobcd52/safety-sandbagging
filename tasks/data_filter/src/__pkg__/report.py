@@ -5,11 +5,22 @@
     {
       "total": 200, "kept": 150, "dropped": 50, "drop_rate": 0.25,
       "threshold": 0.5,
-      "reasons": {"duplicate": 10, "blocklist": 25, "classifier": 15},
+      "reasons": {"empty": 0, "duplicate": 10, "blocklist": 25, "classifier": 15},
       "samples": {"blocklist": [{"id", "url", "snippet", "rule_score", "prob"}, ...], ...}
     }
 
 Invariant: ``kept + dropped == total`` and ``sum(reasons.values()) == dropped``.
+
+``samples`` holds up to ``n_samples`` dropped documents per reason for manual
+review, most confident first: ``blocklist`` samples are the highest
+``rule_score`` drops, ``classifier`` samples the highest ``prob`` drops, and
+``empty`` / ``duplicate`` samples are the first ones in corpus order. Ties keep
+corpus order.
+
+``kept.jsonl`` holds the kept corpus records exactly as they were read (every
+original field, so the output is a valid corpus for the next stage);
+``dropped.jsonl`` holds the dropped records with ``reason``, ``rule_score`` and
+``prob`` added.
 """
 from __future__ import annotations
 
