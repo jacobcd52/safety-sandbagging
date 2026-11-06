@@ -22,7 +22,7 @@ def main(argv=None):
     r.add_argument("--pairs", nargs="*", default=None)
     r.add_argument("--framings", nargs="*", default=None)
     r.add_argument("--seeds", type=int, default=1)
-    r.add_argument("--max-turns", type=int, default=3)
+    r.add_argument("--max-turns", type=int, default=1)
     r.add_argument("--max-tool-calls", type=int, default=40)
     r.add_argument("--workers", type=int, default=4)
     r.add_argument("--keep-workspace", action="store_true")
