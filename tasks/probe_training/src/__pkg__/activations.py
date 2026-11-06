@@ -3,8 +3,17 @@
 A cache is an `.npz` with:
     acts:   float array [n, layers, d]  (or [n, layers, tokens, d] before pooling)
     labels: int array   [n]             (1 = __PosLabel__, 0 = __NegLabel__)
-    ids:    str array   [n]             sample identifiers
+    ids:    str array   [n]             sample identifiers (optional)
+    mask:   int array   [n, tokens]     optional; 1 = real token, 0 = padding
 Layers are 0-indexed: layer 0 is the output of the first transformer block.
+
+`load_cache` guarantees for downstream code:
+  * token-level caches are mean-pooled over REAL tokens only (padding positions,
+    mask == 0, are excluded from the average);
+  * samples whose pooled activations contain NaN or inf are dropped, together
+    with their label and id (partially-written caches are common);
+  * labels are 0/1, ids are unique and acts/labels/ids/mask agree in length;
+    anything else raises ValueError.
 """
 from __future__ import annotations
 

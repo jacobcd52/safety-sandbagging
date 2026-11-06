@@ -10,7 +10,7 @@ import pytest
 from __pkg__.data import __Comparison__, agreement_filter, load_comparisons, split_by_prompt
 from __pkg__.eval import calibration, length_bias, pairwise_accuracy
 from __pkg__.features import featurize, featurize_pairs
-from __pkg__.model import RewardModel
+from __pkg__.model import RewardModel, sigmoid
 
 WS = Path(__file__).resolve().parents[1]
 DATA = WS / "data" / "__comparisons__.jsonl"
@@ -115,3 +115,130 @@ def test_cli_l2_flag_is_wired():
     tight = _cli("--l2", "2.0")
     assert loose > 0
     assert tight < 0.5 * loose, "--l2 has no effect on the trained weights"
+
+
+# ---------------------------------------------------------------------------
+# harder defects
+# ---------------------------------------------------------------------------
+
+def _toy(n=40, d=5, seed=0):
+    rng = np.random.default_rng(seed)
+    Xc = rng.poisson(1.0, size=(n, d)).astype(float)
+    Xr = rng.poisson(1.0, size=(n, d)).astype(float)
+    return Xc, Xr
+
+
+def test_weighted_loss_is_normalised_mean():
+    Xc, Xr = _toy()
+    base = RewardModel(5, lr=0.2, epochs=40, l2=0.05).fit(Xc, Xr)
+    doubled = RewardModel(5, lr=0.2, epochs=40, l2=0.05).fit(Xc, Xr, sample_weight=np.full(40, 2.0))
+    assert np.allclose(base.w, doubled.w, atol=1e-10)
+    # a zero weight is the same as dropping the comparison
+    sw = np.ones(40)
+    sw[::3] = 0.0
+    keep = sw > 0
+    zeroed = RewardModel(5, lr=0.2, epochs=40, l2=0.05).fit(Xc, Xr, sample_weight=sw)
+    dropped = RewardModel(5, lr=0.2, epochs=40, l2=0.05).fit(Xc[keep], Xr[keep])
+    assert np.allclose(zeroed.w, dropped.w, atol=1e-10)
+    # loss reports the weighted mean
+    m = RewardModel(5, l2=0.0)
+    m.w = np.array([0.3, -0.2, 0.1, 0.0, 0.5])
+    marg = m.margins(Xc, Xr)
+    sw2 = np.linspace(0.5, 1.0, 40)
+    expect = float(np.sum(sw2 * np.logaddexp(0.0, -marg)) / np.sum(sw2))
+    assert m.loss(Xc, Xr, sample_weight=sw2) == pytest.approx(expect)
+
+
+def test_fit_minimises_reported_loss():
+    # at convergence the gradient of the documented objective (BT + (l2/2)|w|^2) is ~0
+    Xc, Xr = _toy(n=30, d=3, seed=1)
+    m = RewardModel(3, lr=0.3, epochs=3000, l2=0.5).fit(Xc, Xr)
+    eps = 1e-5
+    grad = []
+    for j in range(3):
+        e = np.zeros(3)
+        e[j] = eps
+        w0 = m.w.copy()
+        m.w = w0 + e
+        up = m.loss(Xc, Xr)
+        m.w = w0 - e
+        down = m.loss(Xc, Xr)
+        m.w = w0
+        grad.append((up - down) / (2 * eps))
+    assert np.abs(grad).max() < 1e-5, grad
+    assert np.abs(m.w).max() > 1e-3
+
+
+def test_pairwise_accuracy_counts_ties_half():
+    assert pairwise_accuracy(np.zeros(4), np.zeros(4)) == pytest.approx(0.5)
+    assert pairwise_accuracy(np.array([1.0, 1.0, 2.0]), np.array([1.0, 0.0, 3.0])) == pytest.approx(0.5)
+    # an untrained (all-zero) model is at chance, not at 0
+    comps = [_c(f"p{i}", f"good answer {i}", f"bad answer {i}") for i in range(10)]
+    Xc, Xr = featurize_pairs(comps, 64)
+    m = RewardModel(64, epochs=0)
+    assert pairwise_accuracy(m.score(Xc), m.score(Xr)) == pytest.approx(0.5)
+
+
+def test_sigmoid_is_numerically_stable():
+    z = np.array([-1000.0, -40.0, 0.0, 40.0, 1000.0])
+    with np.errstate(over="raise", under="ignore"):
+        out = sigmoid(z)
+    assert np.allclose(out, [0.0, 1.0 / (1.0 + np.exp(40.0)), 0.5, 1.0 / (1.0 + np.exp(-40.0)), 1.0])
+    m = RewardModel(2, l2=0.0)
+    m.w = np.array([800.0, 0.0])
+    with np.errstate(over="raise", under="ignore"):
+        p = m.p_chosen(np.array([[0.0, 0.0], [2.0, 0.0]]), np.array([[2.0, 0.0], [0.0, 0.0]]))
+    assert p[0] == pytest.approx(0.0) and p[1] == pytest.approx(1.0)
+
+
+def test_featurize_pairs_empty():
+    Xc, Xr = featurize_pairs([], 16)
+    assert Xc.shape == (0, 16) and Xr.shape == (0, 16)
+
+
+def test_load_comparisons_robust(tmp_path):
+    import json
+    rows = [
+        {"prompt": "p1", "chosen": "a", "rejected": "b", "annotator": "x", "confidence": 0.9},
+        {"prompt": "p1", "chosen": "same", "rejected": "same", "annotator": "x", "confidence": 0.7},
+        {"prompt": "p2", "chosen": "c", "rejected": "d", "annotator": "y", "confidence": 1.0},
+    ]
+    text = "# exported comparisons\n\n" + "\n".join(json.dumps(r) for r in rows) + "\n  \n"
+    path = tmp_path / "ok.jsonl"
+    path.write_text(text)
+    comps = load_comparisons(path)
+    assert [(c.prompt, c.chosen) for c in comps] == [("p1", "a"), ("p2", "c")]
+    bad_conf = dict(rows[0], confidence=1.5)
+    path2 = tmp_path / "bad_conf.jsonl"
+    path2.write_text(json.dumps(rows[0]) + "\n" + json.dumps(rows[2]) + "\n" + json.dumps(bad_conf) + "\n")
+    with pytest.raises(ValueError, match="line 3"):
+        load_comparisons(path2)
+    path3 = tmp_path / "bad_json.jsonl"
+    path3.write_text(json.dumps(rows[0]) + "\n" + '{"prompt": "p3", "chosen": ' + "\n")
+    with pytest.raises(ValueError, match="line 2"):
+        load_comparisons(path3)
+
+
+def test_split_independent_of_input_order():
+    import random as _random
+    comps = [_c(f"prompt {p}", f"c{p}-{i}", f"r{p}-{i}") for p in range(24) for i in range(3)]
+    train_a, test_a = split_by_prompt(comps, 0.25, seed=7)
+    shuffled = list(comps)
+    _random.Random(123).shuffle(shuffled)
+    train_b, test_b = split_by_prompt(shuffled, 0.25, seed=7)
+    assert {c.prompt for c in test_a} == {c.prompt for c in test_b}
+    assert set(test_a) == set(test_b) and set(train_a) == set(train_b)
+    assert test_a
+
+
+def test_model_save_load_roundtrip(tmp_path):
+    Xc, Xr = _toy()
+    m = RewardModel(5, lr=0.07, epochs=33, l2=0.25).fit(Xc, Xr)
+    path = tmp_path / "rm.weights"
+    m.save(path)
+    assert path.exists()
+    ld = RewardModel.load(path)
+    assert (ld.dim, ld.epochs) == (5, 33)
+    assert ld.lr == pytest.approx(0.07) and ld.l2 == pytest.approx(0.25)
+    assert np.array_equal(ld.w, m.w)
+    assert ld.loss(Xc, Xr) == pytest.approx(m.loss(Xc, Xr))

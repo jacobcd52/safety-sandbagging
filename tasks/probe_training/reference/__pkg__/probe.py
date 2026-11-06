@@ -31,6 +31,13 @@ class Standardizer:
 
 
 class LinearProbe:
+    """Logistic regression fit by full-batch gradient descent.
+
+    Objective: mean binary cross-entropy + (l2 / 2) * ||w||^2. The bias `b` is
+    NOT regularised, so with no signal in X the fitted probe reproduces the
+    training base rate (mean predicted probability == fraction of label 1).
+    """
+
     def __init__(self, lr: float = 0.1, epochs: int = 300, l2: float = 1e-3):
         self.lr, self.epochs, self.l2 = lr, epochs, l2
         self.w: np.ndarray | None = None
@@ -63,11 +70,54 @@ class LinearProbe:
         return float((self.predict(X) == np.asarray(y).astype(np.int64)).mean())
 
 
-def split_indices(n: int, val_frac: float = 0.25, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
-    """Random (train_idx, val_idx) permutation split."""
-    perm = np.random.default_rng(seed).permutation(n)
+def roc_auc(scores: np.ndarray, labels: np.ndarray) -> float:
+    """Area under the ROC curve: P(score of a random label-1 sample > score of a random label-0 sample).
+
+    Tied scores count 1/2. Raises ValueError unless both classes are present.
+    """
+    scores = np.asarray(scores, dtype=np.float64)
+    labels = np.asarray(labels).astype(np.int64)
+    pos, neg = scores[labels == 1], scores[labels == 0]
+    if len(pos) == 0 or len(neg) == 0:
+        raise ValueError("roc_auc needs both classes")
+    # average ranks (ties get the mean of their positions)
+    order = np.argsort(scores, kind="mergesort")
+    sorted_scores = scores[order]
+    ranks = np.empty(len(scores))
+    i = 0
+    while i < len(scores):
+        j = i
+        while j + 1 < len(scores) and sorted_scores[j + 1] == sorted_scores[i]:
+            j += 1
+        ranks[order[i:j + 1]] = (i + j) / 2.0 + 1.0
+        i = j + 1
+    n_pos, n_neg = len(pos), len(neg)
+    return float((ranks[labels == 1].sum() - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg))
+
+
+def split_indices(n: int, val_frac: float = 0.25, seed: int = 0,
+                  labels: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """Random (train_idx, val_idx) split with exactly int(n * val_frac) val samples.
+
+    When `labels` is given the split is stratified: each class contributes to the
+    val split in proportion to its frequency (within one sample), so the val class
+    balance matches the full set even for rare classes.
+    """
+    rng = np.random.default_rng(seed)
     n_val = int(n * val_frac)
-    return perm[n_val:], perm[:n_val]
+    if labels is None:
+        perm = rng.permutation(n)
+        return perm[n_val:], perm[:n_val]
+    labels = np.asarray(labels)
+    classes = np.unique(labels)
+    groups = [rng.permutation(np.flatnonzero(labels == c)) for c in classes]
+    exact = np.array([len(g) * n_val / n for g in groups])
+    take = np.floor(exact).astype(int)
+    for k in np.argsort(-(exact - take), kind="mergesort")[: n_val - take.sum()]:
+        take[k] += 1
+    val = np.concatenate([g[:t] for g, t in zip(groups, take)])
+    train = np.concatenate([g[t:] for g, t in zip(groups, take)])
+    return rng.permutation(train), rng.permutation(val)
 
 
 @dataclass
@@ -79,27 +129,34 @@ class LayerResult:
     val_idx: np.ndarray
     train_acc: float
     val_acc: float
+    val_auc: float = float("nan")
 
 
 def train_probe_at_layer(X: np.ndarray, y: np.ndarray, val_frac: float = 0.25, seed: int = 0,
                          layer: int = -1) -> LayerResult:
-    """Standardise, split, fit a probe on the train split and score it on the held-out val split."""
+    """Split (stratified by label), standardise, fit a probe on the train split and score it on the
+    held-out val split (accuracy and ROC AUC)."""
     X = np.asarray(X, dtype=np.float64)
     y = np.asarray(y).astype(np.int64)
-    train_idx, val_idx = split_indices(len(y), val_frac, seed)
+    train_idx, val_idx = split_indices(len(y), val_frac, seed, labels=y)
     scaler = Standardizer().fit(X[train_idx])
     Xtr, ytr = scaler.transform(X[train_idx]), y[train_idx]
     Xva, yva = scaler.transform(X[val_idx]), y[val_idx]
     probe = LinearProbe().fit(Xtr, ytr)
     train_acc = probe.accuracy(Xtr, ytr)
     val_acc = probe.accuracy(Xva, yva)
+    val_auc = roc_auc(probe.decision_function(Xva), yva) if len(np.unique(yva)) == 2 else float("nan")
     return LayerResult(layer=layer, probe=probe, scaler=scaler, train_idx=train_idx, val_idx=val_idx,
-                       train_acc=train_acc, val_acc=val_acc)
+                       train_acc=train_acc, val_acc=val_acc, val_auc=val_auc)
 
 
 def train_probe_per_layer(acts: np.ndarray, labels: np.ndarray, val_frac: float = 0.25,
                           seed: int = 0) -> dict[int, float]:
-    """Sweep every layer of an [n, layers, d] cache; return {layer: held-out accuracy}."""
+    """Sweep every layer of an [n, layers, d] cache; return {layer: held-out accuracy}.
+
+    Every layer is scored on the same train/val split (the one `seed` gives), so the
+    per-layer accuracies are directly comparable.
+    """
     acts = np.asarray(acts)
     out: dict[int, float] = {}
     for layer in range(acts.shape[1]):

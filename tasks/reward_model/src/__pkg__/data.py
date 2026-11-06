@@ -29,6 +29,13 @@ class __Comparison__:
 
 
 def load_comparisons(path: str | Path) -> list[__Comparison__]:
+    """Read a JSONL file of comparisons.
+
+    Blank lines and lines starting with '#' are skipped. Every record must have
+    all FIELDS and a confidence in [0, 1]; otherwise ValueError is raised with the
+    1-based line number in the message (malformed JSON included). Comparisons whose
+    chosen and rejected texts are identical carry no preference and are dropped.
+    """
     out = []
     for line in Path(path).read_text().splitlines():
         if not line.strip():
@@ -59,7 +66,10 @@ def split_by_prompt(comparisons: list[__Comparison__], test_frac: float = 0.25, 
                     ) -> tuple[list[__Comparison__], list[__Comparison__]]:
     """Shuffle and split into (train, test). All comparisons that share a prompt
     must land in the same split, otherwise test accuracy is inflated by the
-    model having seen the prompt's other responses during training."""
+    model having seen the prompt's other responses during training.
+
+    The split depends only on the set of prompts, `test_frac` and `seed`, not on
+    the order of `comparisons`: shuffling the input yields the same partition."""
     rs = list(comparisons)
     random.Random(seed).shuffle(rs)
     n_test = int(len(rs) * test_frac)

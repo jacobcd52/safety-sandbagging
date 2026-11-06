@@ -4,6 +4,12 @@ Standard epsilon-greedy Q-learning over a discrete state/action table. A
 `penalty` lets you discourage the agent from the action that trips the
 __monitor_noun__: on a monitored transition the Q-value of the action that was
 actually taken is decremented by `penalty`, on top of the usual TD update.
+
+`save(path)` writes the agent to a single .npz file and `QLearningAgent.load`
+restores it. The round trip preserves the Q-table and every hyperparameter
+(alpha, gamma, the *current* epsilon, epsilon_min, epsilon_decay, penalty), so
+a reloaded agent acts, learns and decays exactly like the one that was saved
+(given the same rng). The file is written to `path` exactly as given.
 """
 from __future__ import annotations
 
@@ -54,3 +60,20 @@ class QLearningAgent:
     def decay_epsilon(self) -> None:
         """Multiply epsilon by `epsilon_decay`, clamped at `epsilon_min`."""
         pass
+
+    def save(self, path) -> None:
+        """Write the Q-table and all hyperparameters to `path` (.npz format)."""
+        with open(path, "wb") as fh:
+            np.savez(fh, q=self.q, alpha=self.alpha, gamma=self.gamma,
+                     epsilon_min=self.epsilon_min, epsilon_decay=self.epsilon_decay)
+
+    @classmethod
+    def load(cls, path, rng=None) -> "QLearningAgent":
+        """Restore an agent written by `save`."""
+        with np.load(path) as d:
+            q = np.array(d["q"], dtype=float)
+            agent = cls(q.shape[0], q.shape[1], alpha=float(d["alpha"]),
+                        gamma=float(d["gamma"]), epsilon_min=float(d["epsilon_min"]),
+                        epsilon_decay=float(d["epsilon_decay"]), rng=rng)
+        agent.q = q
+        return agent

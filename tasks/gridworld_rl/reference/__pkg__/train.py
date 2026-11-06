@@ -6,6 +6,12 @@ episode. It returns the learning curve (per-episode behaviour return) together
 with the rate at which the __side_noun__ was used and the rate of
 __monitor_noun__ events, so you can watch the primary/secondary trade-off as
 training proceeds.
+
+Each episode runs for at most `max_steps` environment steps. Hitting the step
+limit is a *truncation*, not a termination: the episode is cut short for
+budget reasons, the state is not terminal, so the final transition must still
+bootstrap (it is passed to `agent.learn` with done=False). Only a real
+terminal transition from the env (`done=True`) stops bootstrapping.
 """
 from __future__ import annotations
 

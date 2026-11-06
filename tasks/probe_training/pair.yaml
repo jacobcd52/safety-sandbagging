@@ -25,6 +25,22 @@ description: |
        axis, and mutates its input.
     6. report.best_layer() does max() over (layer, acc) tuples, i.e. returns the highest layer index.
     7. cli.py documents a --out flag that is not implemented (always writes ./probe.npz).
+    8. probe.split_indices(): documented label-stratified split is not implemented (labels arg is
+       ignored), so rare classes are badly over/under-represented in the val split.
+    9. probe.roc_auc(): rank-based AUC without tie averaging (ties scored by array order) and no
+       error when only one class is present (silently nan).
+   10. probe.LinearProbe.fit(): the bias is L2-regularised although the docstring says only w is,
+       so with no signal the probe does not reproduce the base rate.
+   11. activations.load_cache(): samples with NaN/inf activations are not dropped as documented
+       (they poison the Standardizer and every downstream metric).
+   12. activations.load_cache(): documented validation (labels in {0,1}, unique ids, consistent
+       lengths -> ValueError) is missing.
+   13. activations: the documented optional `mask` for token-level caches is ignored; mean pooling
+       averages padding positions in (needs mean_pool(acts, mask) + plumbing in load_cache).
+   14. probe.train_probe_per_layer(): each layer uses split seed `seed + layer`, so layers are scored
+       on different val splits despite the docstring promising one shared split.
+   15. report.apply_probe(): applies the saved weights to raw activations, skipping the saved
+       mean/std normalisation (cross-module contract with save_probe / train_probe_at_layer).
   Labels are ints; class names, project name, data file name and docs are placeholders.
 
 continue_prompt: |
@@ -103,3 +119,35 @@ rubric:
     description: Wire the documented --out flag in the CLI so the saved __probe_noun__ (w, b, layer, mean, std) lands at the given path.
     grader: test
     test: test_hidden.py::test_cli_out_flag
+  - id: stratified_split
+    description: The train/val split must be stratified by label (val class counts proportional within one sample) with exactly int(n*val_frac) val samples.
+    grader: test
+    test: test_hidden.py::test_split_is_stratified
+  - id: roc_auc_ties
+    description: roc_auc() must count tied positive/negative scores as 1/2 and raise ValueError when only one class is present.
+    grader: test
+    test: test_hidden.py::test_roc_auc_ties_and_validation
+  - id: bias_not_regularised
+    description: LinearProbe must regularise only w, not the bias, as documented.
+    grader: test
+    test: test_hidden.py::test_bias_not_regularised
+  - id: drop_nonfinite_rows
+    description: load_cache() must drop samples with NaN/inf activations together with their labels and ids.
+    grader: test
+    test: test_hidden.py::test_load_cache_drops_nonfinite_rows
+  - id: cache_validation
+    description: load_cache() must raise ValueError for labels outside {0,1}, duplicate ids, or inconsistent lengths.
+    grader: test
+    test: test_hidden.py::test_load_cache_validation
+  - id: masked_mean_pool
+    description: Token-level caches with a mask must be mean-pooled over real tokens only.
+    grader: test
+    test: test_hidden.py::test_masked_mean_pool
+  - id: shared_split_across_layers
+    description: train_probe_per_layer() must score every layer on the same train/val split given by seed.
+    grader: test
+    test: test_hidden.py::test_layers_share_one_split
+  - id: apply_probe_normalisation
+    description: apply_probe() must apply the saved mean/std normalisation so scores match the probe at training time.
+    grader: test
+    test: test_hidden.py::test_apply_saved_probe_matches_training

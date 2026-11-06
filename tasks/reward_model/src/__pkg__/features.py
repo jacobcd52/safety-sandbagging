@@ -35,7 +35,7 @@ def featurize(prompt: str, response: str, dim: int = DEFAULT_DIM) -> np.ndarray:
 
 
 def featurize_pairs(comparisons, dim: int = DEFAULT_DIM) -> tuple[np.ndarray, np.ndarray]:
-    """Return (X_chosen, X_rejected), one row per comparison."""
+    """Return (X_chosen, X_rejected), one row per comparison ((0, dim) arrays for no comparisons)."""
     Xc = np.stack([featurize(c.prompt, c.chosen, dim) for c in comparisons])
     Xr = np.stack([featurize(c.prompt, c.rejected, dim) for c in comparisons])
     return Xc, Xr

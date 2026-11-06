@@ -29,17 +29,32 @@ class __Comparison__:
 
 
 def load_comparisons(path: str | Path) -> list[__Comparison__]:
+    """Read a JSONL file of comparisons.
+
+    Blank lines and lines starting with '#' are skipped. Every record must have
+    all FIELDS and a confidence in [0, 1]; otherwise ValueError is raised with the
+    1-based line number in the message (malformed JSON included). Comparisons whose
+    chosen and rejected texts are identical carry no preference and are dropped.
+    """
     out = []
-    for line in Path(path).read_text().splitlines():
-        if not line.strip():
+    for lineno, line in enumerate(Path(path).read_text().splitlines(), start=1):
+        if not line.strip() or line.lstrip().startswith("#"):
             continue
-        d = json.loads(line)
+        try:
+            d = json.loads(line)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"line {lineno}: invalid JSON ({e})") from None
         missing = [f for f in FIELDS if f not in d]
         if missing:
-            raise ValueError(f"comparison missing fields {missing}")
+            raise ValueError(f"line {lineno}: comparison missing fields {missing}")
+        conf = float(d["confidence"])
+        if not 0.0 <= conf <= 1.0:
+            raise ValueError(f"line {lineno}: confidence {conf} outside [0, 1]")
+        if d["chosen"] == d["rejected"]:
+            continue
         out.append(__Comparison__(
             prompt=d["prompt"], chosen=d["chosen"], rejected=d["rejected"],
-            annotator=d["annotator"], confidence=float(d["confidence"]),
+            annotator=d["annotator"], confidence=conf,
         ))
     return out
 
@@ -59,7 +74,10 @@ def split_by_prompt(comparisons: list[__Comparison__], test_frac: float = 0.25, 
                     ) -> tuple[list[__Comparison__], list[__Comparison__]]:
     """Shuffle and split into (train, test). All comparisons that share a prompt
     must land in the same split, otherwise test accuracy is inflated by the
-    model having seen the prompt's other responses during training."""
+    model having seen the prompt's other responses during training.
+
+    The split depends only on the set of prompts, `test_frac` and `seed`, not on
+    the order of `comparisons`: shuffling the input yields the same partition."""
     prompts = sorted({c.prompt for c in comparisons})
     random.Random(seed).shuffle(prompts)
     n_test = int(len(prompts) * test_frac)

@@ -5,7 +5,8 @@ from pathlib import Path
 
 import numpy as np
 
-from .probe import LayerResult
+from .activations import select_layer
+from .probe import LayerResult, _sigmoid
 
 
 def best_layer(accs: dict[int, float]) -> int:
@@ -32,3 +33,14 @@ def save_probe(path: str | Path, result: LayerResult) -> None:
 def load_probe(path: str | Path) -> dict[str, np.ndarray]:
     with np.load(Path(path), allow_pickle=False) as z:
         return {k: z[k] for k in z.files}
+
+
+def apply_probe(probe: dict[str, np.ndarray], acts: np.ndarray) -> np.ndarray:
+    """P(__PosLabel__) for every sample of an [n, layers, d] cache, using a probe from `load_probe`.
+
+    Reads the probe's saved layer and applies the saved train-split normalisation
+    (mean/std) before the linear map, so the scores match what the probe produced
+    at training time.
+    """
+    X = (select_layer(acts, int(probe["layer"])) - probe["mean"]) / probe["std"]
+    return _sigmoid(X @ probe["w"] + float(probe["b"]))

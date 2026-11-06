@@ -4,10 +4,11 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from __pkg__.activations import POS_LABEL, NEG_LABEL, load_cache, mean_pool, select_layer
-from __pkg__.probe import train_probe_at_layer, train_probe_per_layer
-from __pkg__.report import best_layer
+from __pkg__.probe import LinearProbe, roc_auc, train_probe_at_layer, train_probe_per_layer
+from __pkg__.report import apply_probe, best_layer, load_probe, save_probe
 from __pkg__.steer import diff_of_means_direction, project_out, steer
 
 WS = Path(__file__).resolve().parents[1]
@@ -95,3 +96,125 @@ def test_cli_out_flag(tmp_path):
         assert int(z["layer"]) in (3, 4)
     cache = load_cache(DATA)
     assert cache.acts.shape == (400, 6, 32)
+
+
+# ---------------------------------------------------------------------------
+# harder defects
+# ---------------------------------------------------------------------------
+
+def test_split_is_stratified():
+    rng = np.random.default_rng(10)
+    n = 200
+    y = np.zeros(n, dtype=np.int64)
+    y[rng.choice(n, 30, replace=False)] = 1          # 15% positives
+    X = rng.normal(size=(n, 4))
+    for seed in range(12):
+        res = train_probe_at_layer(X, y, val_frac=0.25, seed=seed)
+        assert len(res.val_idx) == 50 and len(res.train_idx) == 150
+        assert sorted(res.train_idx.tolist() + res.val_idx.tolist()) == list(range(n))
+        n_pos_val = int(y[res.val_idx].sum())
+        assert n_pos_val in (7, 8), (seed, n_pos_val)
+
+
+def test_roc_auc_ties_and_validation():
+    assert roc_auc(np.array([0.5, 0.5, 0.5, 0.5]), np.array([1, 0, 1, 0])) == pytest.approx(0.5)
+    assert roc_auc(np.array([0.1, 0.4, 0.35, 0.8]), np.array([0, 0, 1, 1])) == pytest.approx(0.75)
+    # ties between a positive and a negative count 1/2
+    s = np.array([1.0, 1.0, 0.0, 2.0])
+    lab = np.array([0, 1, 0, 1])
+    assert roc_auc(s, lab) == pytest.approx((1.0 + 0.5 + 1.0 + 1.0) / 4)
+    rng = np.random.default_rng(0)
+    s = rng.integers(0, 4, size=300).astype(float)
+    lab = rng.integers(0, 2, size=300)
+    pos, neg = s[lab == 1], s[lab == 0]
+    brute = ((pos[:, None] > neg[None, :]).sum() + 0.5 * (pos[:, None] == neg[None, :]).sum()) / (len(pos) * len(neg))
+    assert roc_auc(s, lab) == pytest.approx(brute)
+    with pytest.raises(ValueError):
+        roc_auc(np.array([0.2, 0.3]), np.array([1, 1]))
+
+
+def test_bias_not_regularised():
+    rng = np.random.default_rng(4)
+    X = rng.normal(size=(400, 3)) * 0.01             # essentially no signal
+    y = (rng.random(400) < 0.2).astype(np.int64)
+    probe = LinearProbe(lr=0.5, epochs=3000, l2=1.0).fit(X, y)
+    # with an unregularised bias the fitted mean probability equals the base rate
+    assert probe.predict_proba(X).mean() == pytest.approx(y.mean(), abs=2e-3)
+    assert probe.b == pytest.approx(np.log(y.mean() / (1 - y.mean())), abs=0.05)
+
+
+def _write_cache(path, **arrays):
+    np.savez(path, **arrays)
+    return path
+
+
+def test_load_cache_drops_nonfinite_rows(tmp_path):
+    rng = np.random.default_rng(5)
+    acts = rng.normal(size=(10, 3, 4))
+    acts[2, 1, 0] = np.nan
+    acts[7, 0, 3] = np.inf
+    labels = np.array([0, 1] * 5)
+    ids = np.array([f"s{i}" for i in range(10)])
+    c = load_cache(_write_cache(tmp_path / "c.npz", acts=acts, labels=labels, ids=ids))
+    keep = [i for i in range(10) if i not in (2, 7)]
+    assert c.acts.shape == (8, 3, 4)
+    assert np.isfinite(c.acts).all()
+    assert c.ids.tolist() == [f"s{i}" for i in keep]
+    assert c.labels.tolist() == labels[keep].tolist()
+    assert np.allclose(c.acts, acts[keep])
+
+
+@pytest.mark.parametrize("bad", ["label", "dup_id", "length"])
+def test_load_cache_validation(tmp_path, bad):
+    rng = np.random.default_rng(6)
+    acts = rng.normal(size=(6, 2, 3))
+    labels = np.array([0, 1, 0, 1, 0, 1])
+    ids = np.array([f"s{i}" for i in range(6)])
+    if bad == "label":
+        labels = np.array([0, 1, 2, 1, 0, 1])
+    elif bad == "dup_id":
+        ids = np.array(["s0", "s1", "s2", "s2", "s4", "s5"])
+    else:
+        labels = labels[:5]
+    path = _write_cache(tmp_path / "c.npz", acts=acts, labels=labels, ids=ids)
+    with pytest.raises(ValueError):
+        load_cache(path)
+
+
+def test_masked_mean_pool(tmp_path):
+    rng = np.random.default_rng(7)
+    n, L, T, d = 5, 3, 6, 4
+    acts = rng.normal(size=(n, L, T, d))
+    lengths = np.array([6, 3, 1, 4, 2])
+    mask = (np.arange(T)[None, :] < lengths[:, None]).astype(np.int64)
+    acts = acts * mask[:, None, :, None]               # padding positions are zero
+    expected = np.stack([acts[i, :, :lengths[i], :].mean(axis=1) for i in range(n)])
+    labels = np.array([0, 1, 0, 1, 1])
+    c = load_cache(_write_cache(tmp_path / "t.npz", acts=acts, labels=labels, mask=mask))
+    assert c.acts.shape == (n, L, d)
+    assert np.allclose(c.acts, expected)
+
+
+def test_layers_share_one_split():
+    rng = np.random.default_rng(8)
+    acts = rng.normal(size=(120, 4, 6))
+    y = rng.integers(0, 2, size=120)
+    acts[:, 2, 0] += 1.5 * (2 * y - 1)
+    accs = train_probe_per_layer(acts, y, val_frac=0.25, seed=5)
+    ref = train_probe_at_layer(acts[:, 0, :], y, 0.25, 5)
+    for layer in range(4):
+        res = train_probe_at_layer(acts[:, layer, :], y, val_frac=0.25, seed=5, layer=layer)
+        assert np.array_equal(np.sort(res.val_idx), np.sort(ref.val_idx))
+        assert accs[layer] == pytest.approx(res.val_acc), layer
+
+
+def test_apply_saved_probe_matches_training(tmp_path):
+    cache = load_cache(DATA)
+    res = train_probe_at_layer(cache.acts[:, 4, :], cache.labels, 0.25, 0, layer=4)
+    path = tmp_path / "p.npz"
+    save_probe(path, res)
+    scores = apply_probe(load_probe(path), cache.acts)
+    expected = res.probe.predict_proba(res.scaler.transform(cache.acts[:, 4, :]))
+    assert scores.shape == (400,)
+    assert np.allclose(scores, expected, atol=1e-8)
+    assert ((scores > 0.5).astype(int) == cache.labels).mean() > 0.85

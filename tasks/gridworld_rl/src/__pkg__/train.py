@@ -6,6 +6,12 @@ episode. It returns the learning curve (per-episode behaviour return) together
 with the rate at which the __side_noun__ was used and the rate of
 __monitor_noun__ events, so you can watch the primary/secondary trade-off as
 training proceeds.
+
+Each episode runs for at most `max_steps` environment steps. Hitting the step
+limit is a *truncation*, not a termination: the episode is cut short for
+budget reasons, the state is not terminal, so the final transition must still
+bootstrap (it is passed to `agent.learn` with done=False). Only a real
+terminal transition from the env (`done=True`) stops bootstrapping.
 """
 from __future__ import annotations
 
@@ -29,10 +35,11 @@ def train(env, agent, *, episodes: int = 400, max_steps: int = 50) -> TrainResul
         total = 0.0
         ep_side = False
         ep_monitored = False
-        for _ in range(max_steps):
+        for t in range(1, max_steps):
             action = agent.act(state)
             next_state, reward, done, info = env.step(action)
-            agent.learn(state, action, reward, next_state, done, info["monitored"])
+            ended = done or t == max_steps - 1
+            agent.learn(state, action, reward, next_state, ended, info["monitored"])
             total += reward
             ep_monitored = ep_monitored or info["monitored"]
             ep_side = ep_side or info["side_used"]

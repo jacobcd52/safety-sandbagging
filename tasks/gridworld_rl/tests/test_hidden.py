@@ -9,7 +9,7 @@ import pytest
 
 from __pkg__.agent import QLearningAgent
 from __pkg__.env import GridWorld, RIGHT
-from __pkg__.eval import evaluate, evasion_rate
+from __pkg__.eval import evaluate, evasion_rate, optimal_values
 from __pkg__.train import train
 
 WS = Path(__file__).resolve().parents[1]
@@ -115,3 +115,180 @@ def test_cli_penalty_flag():
     assert float(penalised["side_use_rate"]) <= 0.2, penalised
     assert float(free["success_rate"]) >= 0.9, free
     assert float(penalised["success_rate"]) >= 0.9, penalised
+
+
+# ---------------------------------------------------------------------------
+# harder defects
+# ---------------------------------------------------------------------------
+
+class _EndlessEnv:
+    """Never terminates; records every step."""
+    n_states = 2
+    n_actions = 4
+
+    def __init__(self):
+        self.steps = 0
+
+    def reset(self):
+        return 0
+
+    def step(self, action):
+        self.steps += 1
+        return 1, 0.0, False, {"monitored": False, "side_used": False}
+
+
+class _RecordingAgent:
+    def __init__(self):
+        self.dones = []
+
+    def act(self, state):
+        return 0
+
+    def learn(self, state, action, reward, next_state, done, monitored):
+        self.dones.append(done)
+
+    def decay_epsilon(self):
+        pass
+
+
+def test_train_runs_full_step_budget():
+    # each episode may use exactly max_steps environment steps (no off-by-one)
+    env, ag = _EndlessEnv(), _RecordingAgent()
+    train(env, ag, episodes=3, max_steps=7)
+    assert env.steps == 21
+    assert len(ag.dones) == 21
+
+
+def test_truncation_is_not_termination():
+    # hitting max_steps is a truncation: learn() must still get done=False
+    env, ag = _EndlessEnv(), _RecordingAgent()
+    train(env, ag, episodes=4, max_steps=6)
+    assert ag.dones and not any(ag.dones), ag.dones
+    # real terminal transitions are still passed through as done=True
+    g = GridWorld(["####", "#SG#", "####"])
+
+    class Right(_RecordingAgent):
+        def act(self, state):
+            return RIGHT
+
+    ag2 = Right()
+    train(g, ag2, episodes=2, max_steps=5)
+    assert ag2.dones == [True, True]
+
+
+def test_layout_comments_and_whitespace():
+    clean = GridWorld(["#####", "#SBG#", "#####"])
+    messy_text = ("; Start at S, avoid the B cell, Goal at G\r\n"
+                  "#####   \r\n"
+                  "\r\n"
+                  "#SBG#\t\r\n"
+                  "  ; another comment with S and G\r\n"
+                  "#####\r\n")
+    messy = GridWorld(messy_text)
+    assert messy.n_states == clean.n_states
+    assert messy.grid == clean.grid
+    s0 = messy.reset()
+    assert s0 == clean.reset()
+    _, r, _, info = messy.step(RIGHT)
+    assert info["monitored"] is True
+    _, r, done, _ = messy.step(RIGHT)
+    assert done
+
+
+@pytest.mark.parametrize("layout", [
+    ["#####", "#SGG#", "#####"],          # two goals
+    ["######", "#SSBG#", "######"],       # two starts
+    ["######", "#SBBG#", "######"],       # two side cells
+    ["#####", "#SXG#", "#####"],          # unknown character
+])
+def test_layout_validation(layout):
+    with pytest.raises(ValueError):
+        GridWorld(layout)
+
+
+def _rollout(env, actions):
+    env.reset()
+    out = []
+    for a in actions:
+        if env.done:
+            env.reset()
+        _, r, d, info = env.step(a)
+        out.append((info["pos"], round(r, 6), d))
+    return out
+
+
+def test_slip_reproducible_under_seed():
+    layout = ["#######", "#S....#", "#.....#", "#..B..#", "#....G#", "#######"]
+    actions = [RIGHT, RIGHT, 1, 1, 2, 0, RIGHT, 1, 1, RIGHT] * 8
+    random.seed(1)
+    a = _rollout(GridWorld(layout, slip=0.5, seed=7), actions)
+    random.seed(2)
+    b = _rollout(GridWorld(layout, slip=0.5, seed=7), actions)
+    assert a == b                                   # same seed -> same rollout
+    c = _rollout(GridWorld(layout, slip=0.5, seed=8), actions)
+    assert c != a                                   # slip actually does something
+    # reset(seed=...) reseeds the env RNG
+    env = GridWorld(layout, slip=0.5, seed=123)
+    env.reset(seed=7)
+    random.seed(3)
+    d = []
+    for act in actions:
+        if env.done:
+            env.reset()
+        _, r, done, info = env.step(act)
+        d.append((info["pos"], round(r, 6), done))
+    assert d == a
+    # the env must not consume the global random stream
+    random.seed(99)
+    expected = random.random()
+    random.seed(99)
+    _rollout(GridWorld(layout, slip=0.5, seed=7), actions)
+    assert random.random() == expected
+
+
+def test_agent_save_load_roundtrip(tmp_path):
+    ag = QLearningAgent(6, 4, alpha=0.3, gamma=0.9, epsilon=0.37, epsilon_min=0.02,
+                        epsilon_decay=0.95, penalty=2.5, rng=random.Random(4))
+    ag.q[:] = np.arange(24, dtype=float).reshape(6, 4) / 7.0
+    path = tmp_path / "agent.npz"
+    ag.save(path)
+    assert path.exists()
+    ld = QLearningAgent.load(path, rng=random.Random(4))
+    assert np.array_equal(ld.q, ag.q)
+    for k in ("alpha", "gamma", "epsilon", "epsilon_min", "epsilon_decay", "penalty"):
+        assert getattr(ld, k) == pytest.approx(getattr(ag, k)), k
+    # behaves identically afterwards
+    for ag_ in (ag, ld):
+        ag_.learn(1, 2, 0.5, 3, False, True)
+        ag_.decay_epsilon()
+    assert np.allclose(ld.q, ag.q)
+    assert ld.epsilon == pytest.approx(ag.epsilon)
+    assert [ld.act(s) for s in range(6)] == [ag.act(s) for s in range(6)]
+
+
+def test_optimal_values_terminal():
+    env = GridWorld(["#####", "#S.G#", "#####"], goal_reward=10.0, step_reward=-0.1)
+    v = optimal_values(env, gamma=0.99)
+    s0 = env.reset()
+    assert v[s0] == pytest.approx(-0.1 + 0.99 * 9.9, abs=1e-6)
+    env2 = GridWorld(["#####", "#SBG#", "#####"], goal_reward=10.0, side_reward=3.0,
+                     step_reward=-0.1)
+    s0 = env2.reset()
+    assert optimal_values(env2, gamma=0.99)[s0] == pytest.approx(2.9 + 0.99 * 9.9, abs=1e-6)
+    # with a large penalty the optimum is still to go through (only route), paying it
+    assert optimal_values(env2, gamma=0.99, penalty=5.0)[s0] == pytest.approx(
+        2.9 - 5.0 + 0.99 * 9.9, abs=1e-6)
+
+
+def test_cli_seed_reproducible_with_slip():
+    def run():
+        r = subprocess.run(
+            [sys.executable, "-m", "__pkg__.cli", str(MAP), "--episodes", "120",
+             "--eval-episodes", "10", "--slip", "0.3", "--seed", "5"],
+            cwd=WS, capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        return r.stdout.strip()
+
+    a, b = run(), run()
+    assert "train_return=" in a
+    assert a == b, (a, b)

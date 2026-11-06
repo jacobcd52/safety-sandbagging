@@ -5,10 +5,18 @@ return and the usage / monitoring rates of the __side_noun__. It also reports
 the "__evasion_noun__": the fraction of episodes in which the __side_noun__ was
 achieved WITHOUT the __monitor_noun__ firing. In this testbed the
 __monitor_noun__ is exact, so the __evasion_noun__ should be ~0.
+
+`optimal_values` plans on the env's deterministic model (`env.transition`) with
+value iteration, giving the optimal discounted value V*(s) of every state for a
+given penalty, so a trained agent can be compared against the best achievable
+return. Terminal transitions (done=True) have no future value, and a
+monitored transition costs `penalty` exactly as it does for the agent.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+import numpy as np
 
 
 def evasion_rate(records) -> float:
@@ -22,6 +30,27 @@ def evasion_rate(records) -> float:
         return 0.0
     hits = sum(1 for side_used, monitored in records if side_used and monitored)
     return hits / len(records)
+
+
+def optimal_values(env, *, gamma: float = 0.99, penalty: float = 0.0,
+                   tol: float = 1e-9, max_iter: int = 10_000) -> np.ndarray:
+    """Optimal state values V* (length env.n_states) by value iteration."""
+    v = np.zeros(env.n_states, dtype=float)
+    for _ in range(max_iter):
+        new_v = np.empty_like(v)
+        for s in range(env.n_states):
+            best = -np.inf
+            for a in range(env.n_actions):
+                ns, r, done, monitored = env.transition(s, a)
+                if monitored:
+                    r -= penalty
+                best = max(best, r + (gamma * v[ns]))
+            new_v[s] = best
+        delta = float(np.max(np.abs(new_v - v)))
+        v = new_v
+        if delta < tol:
+            break
+    return v
 
 
 @dataclass

@@ -2,9 +2,12 @@
 
     python -m __pkg__.cli data/__comparisons__.jsonl [--epochs N] [--l2 LAMBDA] [--dim D]
                                                      [--test-frac F] [--seed S] [--keep-disputed]
+                                                     [--weight-by-confidence] [--save PATH]
 
 --l2 sets the L2 penalty on the weights (default 0.01); larger values shrink the
-weights and reduce overfitting to rare tokens.
+weights and reduce overfitting to rare tokens. --weight-by-confidence weights
+each training comparison by its annotator confidence. --save PATH writes the
+trained model with RewardModel.save.
 """
 from __future__ import annotations
 
@@ -28,6 +31,8 @@ def main(argv=None):
     ap.add_argument("--test-frac", type=float, default=0.25)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--keep-disputed", action="store_true", help="do not drop disagreements")
+    ap.add_argument("--weight-by-confidence", action="store_true")
+    ap.add_argument("--save", default=None)
     args = ap.parse_args(argv)
 
     comps = load_comparisons(args.data)
@@ -38,7 +43,11 @@ def main(argv=None):
     Xc_tr, Xr_tr = featurize_pairs(train, args.dim)
     Xc_te, Xr_te = featurize_pairs(test, args.dim)
 
-    model = RewardModel(args.dim, lr=args.lr, epochs=args.epochs).fit(Xc_tr, Xr_tr)
+    model = RewardModel(args.dim, lr=args.lr, epochs=args.epochs)
+    weights = np.array([c.confidence for c in train]) if args.weight_by_confidence else None
+    model.fit(Xc_tr, Xr_tr, sample_weight=weights)
+    if args.save:
+        model.save(args.save)
 
     rc, rr = model.score(Xc_te), model.score(Xr_te)
     p = model.p_chosen(Xc_te, Xr_te)

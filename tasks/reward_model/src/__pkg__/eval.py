@@ -1,6 +1,8 @@
 """Evaluation of a trained __RewardNoun__ model.
 
 * pairwise accuracy: fraction of held-out comparisons where r_chosen > r_rejected
+  (an exact tie r_chosen == r_rejected counts as half a correct comparison, so an
+  uninformative model scores 0.5, not 0)
 * mean margin: average r_chosen - r_rejected
 * calibration: bucket the predicted P(chosen) and compare the mean prediction in
   each bucket with the empirical fraction of positive outcomes
