@@ -258,7 +258,7 @@ def test_kept_records_preserve_all_fields():
         _write_jsonl(corpus, [json.dumps(r) for r in recs])
         out = Path(td) / "out"
         r = subprocess.run([sys.executable, "-m", "__pkg__.cli", str(corpus), str(out),
-                            "--seed-labels", str(SEEDS), "--threshold", "1.01"], cwd=WS, capture_output=True, text=True)
+                            "--seed-labels", str(SEEDS), "--threshold", "1.0"], cwd=WS, capture_output=True, text=True)
         assert r.returncode == 0, r.stderr
         kept = [json.loads(l) for l in (out / "kept.jsonl").read_text().splitlines()]
         dropped = [json.loads(l) for l in (out / "dropped.jsonl").read_text().splitlines()]
