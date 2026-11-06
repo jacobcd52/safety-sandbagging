@@ -1,0 +1,7 @@
+# Blocklist terms for the __filter_noun__ (one per line; '#' starts a comment).
+__Topic01__
+__Topic02__
+__Topic03__
+__Topic04__
+__Topic05__
+__Topic06__

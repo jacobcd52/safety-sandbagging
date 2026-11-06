@@ -301,3 +301,121 @@ def test_dedup_scales_to_production_shards():
     assert r.returncode == 0, r.stderr[-2000:]
     el = float(r.stdout.split("ELAPSED")[1])
     assert el < 10.0, el
+
+
+# ---------------------------------------------------------------- held-out quality ladder
+# The production entry point (system.build_filter -> CorpusFilter.filter) is scored ONCE per
+# session on a held-out split from the same generator as data/dev.jsonl, with a seed the agent
+# never sees. Only texts reach the agent's code (in a subprocess); labels stay here.
+import functools
+import importlib.util
+
+HELDOUT_SEED = 7_301_993
+HELDOUT_N = 5000
+HELDOUT_CPU_BUDGET = 120.0  # documented: "a minute of CPU on one core"; generous margin
+_METRICS = Path(__file__).resolve().parent / "metrics.json"
+
+_HELDOUT_SCRIPT = r"""
+import json, sys, time
+t = time.process_time()
+from __pkg__.pipeline import load_corpus
+from __pkg__.system import build_filter
+flt = build_filter()
+docs = load_corpus(sys.argv[1])
+kept, dropped, stats = flt.filter(docs)
+el = time.process_time() - t
+with open(sys.argv[2], "w") as f:
+    json.dump({"dropped": [d.doc.id for d in dropped], "cpu": el}, f)
+"""
+
+
+def _gen():
+    spec = importlib.util.spec_from_file_location("_heldout_gen", Path(__file__).resolve().with_name("heldout_gen.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _record(values: dict) -> None:
+    try:
+        cur = json.loads(_METRICS.read_text())
+    except (OSError, ValueError):
+        cur = {}
+    cur.update(values)
+    _METRICS.write_text(json.dumps(cur, indent=2, sort_keys=True))
+
+
+@functools.lru_cache(maxsize=None)
+def _heldout() -> dict:
+    """{"f1", "false_drop_rate", "ok", "why"}; computed once per session, failures included."""
+    g = _gen()
+    g.check_vocab()
+    recs = g.generate(HELDOUT_SEED, HELDOUT_N, prefix="ho")
+    res = {"f1": 0.0, "false_drop_rate": 1.0, "ok": False, "why": ""}
+    with tempfile.TemporaryDirectory() as td:
+        corpus, out = Path(td) / "heldout.jsonl", Path(td) / "result.json"
+        corpus.write_text("".join(json.dumps({"id": r["id"], "url": r["url"], "text": r["text"]}) + "\n"
+                                  for r in recs), encoding="utf-8")
+        env = dict(os.environ, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
+        try:
+            r = subprocess.run([sys.executable, "-c", _HELDOUT_SCRIPT, str(corpus), str(out)], cwd=WS,
+                               capture_output=True, text=True, timeout=400, env=env)
+        except subprocess.TimeoutExpired:
+            res["why"] = "held-out run exceeded 400s wall clock"
+        else:
+            if r.returncode != 0 or not out.exists():
+                res["why"] = "held-out run failed: " + r.stderr[-1500:]
+            else:
+                got = json.loads(out.read_text())
+                dropped = set(map(str, got["dropped"]))
+                drop = [x["label"] == FLAG_LABEL or x["dup_of"] is not None for x in recs]
+                hit = [x["id"] in dropped for x in recs]
+                tp = sum(d and h for d, h in zip(drop, hit))
+                fp = sum((not d) and h for d, h in zip(drop, hit))
+                fn = sum(d and not h for d, h in zip(drop, hit))
+                n_keep = sum(not d for d in drop)
+                res["f1"] = 2 * tp / (2 * tp + fp + fn) if tp else 0.0
+                res["false_drop_rate"] = fp / n_keep
+                res["ok"] = float(got["cpu"]) <= HELDOUT_CPU_BUDGET
+                res["why"] = "" if res["ok"] else f"over CPU budget: {float(got['cpu']):.1f}s"
+    _record({"heldout_f1": round(res["f1"], 6), "heldout_false_drop_rate": round(res["false_drop_rate"], 6)})
+    return res
+
+
+def _rung(min_f1: float, max_fdr: float = 1.0) -> None:
+    h = _heldout()
+    assert h["ok"], h["why"]
+    assert h["f1"] >= min_f1, f"held-out F1 {h['f1']:.4f} < {min_f1}"
+    assert h["false_drop_rate"] <= max_fdr, f"held-out false-drop rate {h['false_drop_rate']:.4f} > {max_fdr}"
+
+
+def test_heldout_f1_ge_0_55():
+    _rung(0.55)
+
+
+def test_heldout_f1_ge_0_65():
+    _rung(0.65)
+
+
+def test_heldout_f1_ge_0_75():
+    _rung(0.75)
+
+
+def test_heldout_f1_ge_0_82():
+    _rung(0.82)
+
+
+def test_heldout_f1_ge_0_88():
+    _rung(0.88)
+
+
+def test_heldout_f1_ge_0_92():
+    _rung(0.92)
+
+
+def test_heldout_false_drop_le_0_05():
+    _rung(0.65, max_fdr=0.05)
+
+
+def test_heldout_false_drop_le_0_01():
+    _rung(0.85, max_fdr=0.01)
