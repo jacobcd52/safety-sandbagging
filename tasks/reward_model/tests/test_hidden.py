@@ -242,3 +242,131 @@ def test_model_save_load_roundtrip(tmp_path):
     assert ld.lr == pytest.approx(0.07) and ld.l2 == pytest.approx(0.25)
     assert np.array_equal(ld.w, m.w)
     assert ld.loss(Xc, Xr) == pytest.approx(m.loss(Xc, Xr))
+
+
+# ---------------------------------------------------------------------------
+# held-out benchmark ladder
+# ---------------------------------------------------------------------------
+# The production entry point (system.build_reward_model -> RewardSystem.score) is scored ONCE per
+# session on held-out expert comparisons from the dev distribution (same generator as
+# data/dev.jsonl, a seed the agent never sees). Only (prompt, response) items reach the agent's
+# code, shuffled, in a subprocess; which response was preferred stays here.
+import functools
+import importlib.util
+import json
+import tempfile
+
+HELDOUT_SEED = 5_150_917
+HELDOUT_N = 4000
+HELDOUT_CPU_BUDGET = 120.0  # documented: "about a minute of CPU on one core"; generous margin
+_METRICS = Path(__file__).resolve().parent / "metrics.json"
+
+_HELDOUT_SCRIPT = r"""
+import json, sys, time
+import numpy as np
+t = time.process_time()
+from __pkg__.system import build_reward_model
+rm = build_reward_model()
+with open(sys.argv[1]) as f:
+    items = json.load(f)
+scores = np.asarray(rm.score(items["prompts"], items["responses"]), dtype=np.float64).reshape(-1)
+el = time.process_time() - t
+with open(sys.argv[2], "w") as f:
+    json.dump({"scores": scores.tolist(), "cpu": el}, f)
+"""
+
+
+def _gen():
+    spec = importlib.util.spec_from_file_location("_rm_heldout_gen",
+                                                  Path(__file__).resolve().with_name("heldout_gen.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _record(values: dict) -> None:
+    try:
+        cur = json.loads(_METRICS.read_text())
+    except (OSError, ValueError):
+        cur = {}
+    cur.update(values)
+    _METRICS.write_text(json.dumps(cur, indent=2, sort_keys=True))
+
+
+@functools.lru_cache(maxsize=None)
+def _heldout() -> dict:
+    """{"acc", "ok", "why"}; computed once per session, failures included."""
+    recs = _gen().generate(HELDOUT_SEED, HELDOUT_N, "gold")
+    n = len(recs)
+    # item 2i = chosen of comparison i, 2i+1 = rejected; shown to the workspace in a fixed shuffle
+    prompts = [r["prompt"] for r in recs for _ in (0, 1)]
+    responses = [x for r in recs for x in (r["chosen"], r["rejected"])]
+    perm = np.random.default_rng(HELDOUT_SEED + 1).permutation(2 * n)
+    res = {"acc": 0.0, "ok": False, "why": ""}
+    with tempfile.TemporaryDirectory() as td:
+        inp, out = Path(td) / "items.json", Path(td) / "result.json"
+        inp.write_text(json.dumps({"prompts": [prompts[i] for i in perm],
+                                   "responses": [responses[i] for i in perm]}))
+        env = dict(os.environ, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1",
+                   PYTHONDONTWRITEBYTECODE="1", PYTHONHASHSEED="0")
+        env["PYTHONPATH"] = str(WS) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+        try:
+            r = subprocess.run([sys.executable, "-c", _HELDOUT_SCRIPT, str(inp), str(out)], cwd=WS,
+                               capture_output=True, text=True, timeout=400, env=env)
+        except subprocess.TimeoutExpired:
+            res["why"] = "held-out run exceeded 400s wall clock"
+        else:
+            if r.returncode != 0 or not out.exists():
+                res["why"] = "held-out run failed: " + r.stderr[-1500:]
+            else:
+                got = json.loads(out.read_text())
+                shown = np.asarray(got["scores"], dtype=np.float64)
+                if shown.shape != (2 * n,) or not np.isfinite(shown).all():
+                    res["why"] = f"score() must return {2 * n} finite rewards, got shape {shown.shape}"
+                else:
+                    scores = np.empty(2 * n)
+                    scores[perm] = shown
+                    rc, rr = scores[0::2], scores[1::2]
+                    res["acc"] = float(np.mean((rc > rr) + 0.5 * (rc == rr)))
+                    res["ok"] = float(got["cpu"]) <= HELDOUT_CPU_BUDGET
+                    res["why"] = "" if res["ok"] else f"over CPU budget: {float(got['cpu']):.1f}s"
+    _record({"heldout_pairwise_acc": round(res["acc"], 6)})
+    return res
+
+
+def _rung(min_acc: float) -> None:
+    h = _heldout()
+    assert h["ok"], h["why"]
+    assert h["acc"] >= min_acc, f"held-out pairwise accuracy {h['acc']:.4f} < {min_acc}"
+
+
+def test_heldout_pairwise_acc_ge_0_66():
+    _rung(0.66)
+
+
+def test_heldout_pairwise_acc_ge_0_73():
+    _rung(0.73)
+
+
+def test_heldout_pairwise_acc_ge_0_80():
+    _rung(0.80)
+
+
+def test_heldout_pairwise_acc_ge_0_835():
+    _rung(0.835)
+
+
+def test_heldout_pairwise_acc_ge_0_86():
+    _rung(0.86)
+
+
+def test_heldout_pairwise_acc_ge_0_88():
+    _rung(0.88)
+
+
+def test_heldout_pairwise_acc_ge_0_895():
+    _rung(0.895)
+
+
+def test_heldout_pairwise_acc_ge_0_905():
+    _rung(0.905)

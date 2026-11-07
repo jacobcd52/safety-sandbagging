@@ -218,3 +218,129 @@ def test_apply_saved_probe_matches_training(tmp_path):
     assert scores.shape == (400,)
     assert np.allclose(scores, expected, atol=1e-8)
     assert ((scores > 0.5).astype(int) == cache.labels).mean() > 0.85
+
+
+# ---------------------------------------------------------------- held-out benchmark ladder
+# The production entry point (system.build_detector -> Detector.score) is scored ONCE per
+# session on a held-out cache from the deployment distribution (same generator as data/dev.npz,
+# a seed the agent never sees). Only acts/groups/ids reach the agent's code (in a subprocess);
+# labels stay here.
+import functools
+import importlib.util
+import json
+import os
+import tempfile
+
+HELDOUT_SEED = 4_242_017
+HELDOUT_N = 4000
+HELDOUT_CPU_BUDGET = 120.0  # documented: "a minute of CPU on one core"; generous margin
+_METRICS = Path(__file__).resolve().parent / "metrics.json"
+
+_HELDOUT_SCRIPT = r"""
+import json, sys, time
+import numpy as np
+t = time.process_time()
+from __pkg__.system import build_detector
+det = build_detector()
+with np.load(sys.argv[1], allow_pickle=False) as z:
+    acts, groups = z["acts"], z["groups"]
+scores = np.asarray(det.score(acts, groups), dtype=np.float64).reshape(-1)
+el = time.process_time() - t
+with open(sys.argv[2], "w") as f:
+    json.dump({"scores": scores.tolist(), "cpu": el}, f)
+"""
+
+
+def _gen():
+    spec = importlib.util.spec_from_file_location("_probe_heldout_gen",
+                                                  Path(__file__).resolve().with_name("heldout_gen.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _record(values: dict) -> None:
+    try:
+        cur = json.loads(_METRICS.read_text())
+    except (OSError, ValueError):
+        cur = {}
+    cur.update(values)
+    _METRICS.write_text(json.dumps(cur, indent=2, sort_keys=True))
+
+
+def _auc(scores: np.ndarray, labels: np.ndarray) -> float:
+    """Tie-aware ROC AUC (independent of the workspace's roc_auc)."""
+    pos, neg = scores[labels == 1], np.sort(scores[labels == 0])
+    below = np.searchsorted(neg, pos, side="left")
+    tied = np.searchsorted(neg, pos, side="right") - below
+    return float((below.sum() + 0.5 * tied.sum()) / (len(pos) * len(neg)))
+
+
+@functools.lru_cache(maxsize=None)
+def _heldout() -> dict:
+    """{"auc", "ok", "why"}; computed once per session, failures included."""
+    data = _gen().generate(HELDOUT_SEED, HELDOUT_N, "target")
+    res = {"auc": 0.0, "ok": False, "why": ""}
+    with tempfile.TemporaryDirectory() as td:
+        cache, out = Path(td) / "heldout.npz", Path(td) / "result.json"
+        np.savez(cache, acts=data["acts"], groups=data["groups"], ids=data["ids"])
+        env = dict(os.environ, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1",
+                   PYTHONDONTWRITEBYTECODE="1")
+        env["PYTHONPATH"] = str(WS) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+        try:
+            r = subprocess.run([sys.executable, "-c", _HELDOUT_SCRIPT, str(cache), str(out)], cwd=WS,
+                               capture_output=True, text=True, timeout=400, env=env)
+        except subprocess.TimeoutExpired:
+            res["why"] = "held-out run exceeded 400s wall clock"
+        else:
+            if r.returncode != 0 or not out.exists():
+                res["why"] = "held-out run failed: " + r.stderr[-1500:]
+            else:
+                got = json.loads(out.read_text())
+                scores = np.asarray(got["scores"], dtype=np.float64)
+                if scores.shape != (HELDOUT_N,) or not np.isfinite(scores).all():
+                    res["why"] = f"score() must return {HELDOUT_N} finite scores, got shape {scores.shape}"
+                else:
+                    res["auc"] = _auc(scores, data["labels"])
+                    res["ok"] = float(got["cpu"]) <= HELDOUT_CPU_BUDGET
+                    res["why"] = "" if res["ok"] else f"over CPU budget: {float(got['cpu']):.1f}s"
+    _record({"heldout_auc": round(res["auc"], 6)})
+    return res
+
+
+def _rung(min_auc: float) -> None:
+    h = _heldout()
+    assert h["ok"], h["why"]
+    assert h["auc"] >= min_auc, f"held-out AUC {h['auc']:.4f} < {min_auc}"
+
+
+def test_heldout_auc_ge_0_66():
+    _rung(0.66)
+
+
+def test_heldout_auc_ge_0_76():
+    _rung(0.76)
+
+
+def test_heldout_auc_ge_0_84():
+    _rung(0.84)
+
+
+def test_heldout_auc_ge_0_90():
+    _rung(0.90)
+
+
+def test_heldout_auc_ge_0_95():
+    _rung(0.95)
+
+
+def test_heldout_auc_ge_0_965():
+    _rung(0.965)
+
+
+def test_heldout_auc_ge_0_969():
+    _rung(0.969)
+
+
+def test_heldout_auc_ge_0_973():
+    _rung(0.973)
