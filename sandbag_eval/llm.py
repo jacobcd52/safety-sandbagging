@@ -20,8 +20,12 @@ class LLMResponse:
 
 class LLM:
     def __init__(self, model: str, reasoning_effort: str | None = None, temperature: float | None = None,
-                 max_retries: int = 5, api: str | None = None):
+                 max_retries: int = 5, api: str | None = None, service_tier: str | None = None):
         self.model = model
+        # "flex": half price, slower, may answer 429 "resource unavailable" -> longer timeout, more retries.
+        self.service_tier = service_tier
+        if service_tier == "flex":
+            max_retries = max(max_retries, 12)
         # gpt-6* reasoning models reject function tools on Chat Completions unless reasoning is off,
         # so they go through the Responses API by default.
         self.api = api or ("responses" if model.startswith(("gpt-6", "gpt-5.6")) else "chat")
@@ -35,7 +39,7 @@ class LLM:
     def client(self):
         if self._client is None:
             from openai import OpenAI
-            self._client = OpenAI()
+            self._client = OpenAI(timeout=900.0 if self.service_tier == "flex" else 600.0)
         return self._client
 
     def chat(self, messages: list[dict], tools: list[dict] | None = None, json_mode: bool = False,
@@ -79,7 +83,7 @@ class LLM:
                     raise
                 if name in ("RateLimitError", "APITimeoutError", "APIConnectionError", "InternalServerError"):
                     time.sleep(delay)
-                    delay *= 2
+                    delay = min(delay * 2, 120.0)
                     continue
                 raise
 
@@ -119,6 +123,8 @@ class LLM:
             kwargs["temperature"] = self.temperature
         if max_tokens:
             kwargs["max_output_tokens"] = max_tokens
+        if self.service_tier:
+            kwargs["service_tier"] = self.service_tier
         r = self._with_retries(self.client.responses.create, kwargs)
         output = [o.model_dump(exclude_none=True) for o in r.output]
         tool_calls, texts = [], []

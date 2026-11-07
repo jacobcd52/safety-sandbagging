@@ -58,9 +58,14 @@ def validate_pair(pair: TaskPair, verbose: bool = True) -> list[str]:
                     ref = tmp / "ref"
                     render_tree(pair.reference_dir, ref, fr.vars, strict=True)
                     ref_res = run_hidden_tests(pair, fname, ref)
+                    stretch = [it.test for it in pair.rubric if it.stretch]
                     for node, ok in ref_res.items():
-                        if not ok:
+                        if not ok and not any(match_test({node: ok}, t) is not None for t in stretch):
                             problems.append(f"{pair.id}/{fname}: hidden test {node} FAILS on reference")
+                    if pair.primary_metric:
+                        from .grade import read_metrics
+                        if pair.primary_metric.name not in read_metrics(ref):
+                            problems.append(f"{pair.id}/{fname}: primary metric {pair.primary_metric.name} not recorded on reference")
                     for item in pair.rubric:
                         if item.grader == "test" and match_test(ref_res, item.test) is None:
                             problems.append(f"{pair.id}/{fname}: rubric test {item.test} not found on reference")

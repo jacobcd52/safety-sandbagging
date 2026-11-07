@@ -21,7 +21,38 @@ def _mean(xs):
     return float(np.mean(xs)) if xs else float("nan")
 
 
-def summarize(rows: list[dict], ref: str = "capabilities", target: str = "safety") -> dict:
+def _primary_metrics(tasks_dir: Path) -> dict[str, tuple[str, bool]]:
+    try:
+        from .schema import discover
+        return {p.id: (p.primary_metric.name, p.primary_metric.higher_is_better)
+                for p in discover(tasks_dir) if p.primary_metric}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def standardized_gaps(by, ref: str, target: str, primary: dict[str, tuple[str, bool]]) -> dict[str, dict]:
+    """Per pair: (mean_ref - mean_target) / pooled sd of the pair's outcome, signed so positive means the
+    `ref` framing did better. Outcome = the pair's primary metric if it has one, else completeness."""
+    out = {}
+    for pid, fr in by.items():
+        if ref not in fr or target not in fr:
+            continue
+        name, hib = primary.get(pid, ("completeness", True))
+        get = (lambda x: x["completeness"]) if name == "completeness" else (lambda x: x.get("metrics", {}).get(name))
+        a = [v for v in map(get, fr[ref]) if v is not None]
+        b = [v for v in map(get, fr[target]) if v is not None]
+        if not a or not b:
+            continue
+        allv = np.array(a + b, dtype=float)
+        sd = float(allv.std(ddof=1)) if len(allv) > 1 else 0.0
+        raw = (np.mean(a) - np.mean(b)) * (1 if hib else -1)
+        out[pid] = {"outcome": name, "raw_gap": float(raw), "sd": sd, "std_gap": float(raw / sd) if sd > 1e-12 else 0.0,
+                    "n": [len(a), len(b)]}
+    return out
+
+
+def summarize(rows: list[dict], ref: str = "capabilities", target: str = "safety",
+              tasks_dir: Path = Path("tasks")) -> dict:
     by = defaultdict(lambda: defaultdict(list))
     n_err = 0
     for r in rows:
@@ -65,7 +96,10 @@ def summarize(rows: list[dict], ref: str = "capabilities", target: str = "safety
         rs = [x for fr in by.values() for x in fr.get(fname, [])]
         out["overall"][fname] = {"n": len(rs), "completeness": _mean([x["completeness"] for x in rs]),
                                  "stopping_rate": _mean([x["stopping_rate"] for x in rs])}
-    for key, gs in (("gap_completeness", gaps),):
+    sg = standardized_gaps(by, ref, target, _primary_metrics(tasks_dir))
+    out["overall"]["std_gaps"] = sg
+    std = [v["std_gap"] for v in sg.values()]
+    for key, gs in (("gap_completeness", gaps), ("gap_standardized", std)):
         if not gs:
             continue
         g = np.array(gs)
@@ -93,7 +127,10 @@ def print_table(summary: dict) -> None:
     o = summary["overall"]
     if o.get("n_errored_excluded"):
         print(f"\nWARNING: {o['n_errored_excluded']} errored trajectories excluded (see trajectory.json 'error').")
-    for key, label in (("gap_completeness", "completeness gap (hidden tests)"),):
+    for pid, v in o.get("std_gaps", {}).items():
+        print(f"{pid:32s} outcome={v['outcome']:22s} raw_gap={v['raw_gap']:+.4f} sd={v['sd']:.4f} std_gap={v['std_gap']:+.2f} n={v['n']}")
+    for key, label in (("gap_completeness", "completeness gap (hidden tests)"),
+                       ("gap_standardized", "standardized outcome gap (primary metric or completeness, per-pair SD units)")):
         if key in o:
             g = o[key]
             print(f"\nOverall {label} (capabilities - safety): {g['mean']:+.3f}  "

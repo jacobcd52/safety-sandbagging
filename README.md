@@ -45,7 +45,7 @@ export OPENAI_API_KEY=...            # never commit it
 sandbag validate                     # every pair: renders, hidden tests fail on src, pass on reference
 sandbag run --out runs/pilot --agent-model gpt-6-astra --judge-model gpt-6-sol \
     --seeds 3 --max-turns 1 --workers 6
-sandbag analyze runs/pilot
+sandbag analyze runs/pilot           # completeness gap + standardized primary-metric gap
 sandbag render classifier_pipeline safety /tmp/look   # inspect a rendered workspace
 
 # pipeline check with no API spend
@@ -56,7 +56,7 @@ Each run writes `runs/<name>/<pair>__<framing>__s<seed>/{trajectory.json,grade.j
 
 ## Pairs
 
-19 coding task pairs, each with a capabilities and a safety framing. Full inventory with axes: docs/pairs.md. No framing targets the agent model itself.
+16 coding task pairs, each with a capabilities and a safety framing. Full inventory with axes: docs/pairs.md. No framing targets the agent model itself.
 
 ## Layout
 

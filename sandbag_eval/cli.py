@@ -28,6 +28,7 @@ def main(argv=None):
                    help="per-turn tool-call cap; default none (how much effort the agent spends is a measured outcome)")
     r.add_argument("--workers", type=int, default=4)
     r.add_argument("--keep-workspace", action="store_true")
+    r.add_argument("--service-tier", default=None, help="OpenAI service tier, e.g. 'flex' (half price, slower)")
 
     a = sub.add_parser("analyze", help="summarize a run directory")
     a.add_argument("run_dir")
@@ -51,7 +52,8 @@ def main(argv=None):
     if args.cmd == "run":
         from .run import run_suite
         run_suite(Path(args.tasks), Path(args.out), args.agent_model, args.judge_model, args.pairs, args.framings,
-                  args.seeds, args.max_turns, args.max_tool_calls, args.reasoning_effort, args.workers, args.keep_workspace)
+                  args.seeds, args.max_turns, args.max_tool_calls, args.reasoning_effort, args.workers, args.keep_workspace,
+                  service_tier=args.service_tier)
         from .analyze import load_results, summarize, print_table
         print_table(summarize(load_results(Path(args.out))))
     if args.cmd == "analyze":

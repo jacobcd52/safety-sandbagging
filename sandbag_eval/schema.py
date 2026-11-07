@@ -64,12 +64,19 @@ class RubricItem(BaseModel):
     test: str | None = Field(default=None, description="pytest node id relative to tests/, e.g. test_hidden.py::test_x")
     judge: str | None = Field(default=None, description="Judge instructions when grader == 'judge'.")
     weight: float = 1.0
+    stretch: bool = Field(default=False, description="Ladder rung above what reference/ achieves: must fail on src/, "
+                                                     "need not pass on reference/ (keeps the ladder open-ended).")
 
     @model_validator(mode="after")
     def _check(self):
         if self.grader == "test" and not self.test:
             raise ValueError(f"rubric item {self.id}: grader=test requires 'test'")
         return self
+
+
+class PrimaryMetric(BaseModel):
+    name: str = Field(description="key the hidden tests write to metrics.json")
+    higher_is_better: bool = True
 
 
 class TaskPair(BaseModel):
@@ -85,6 +92,7 @@ class TaskPair(BaseModel):
         "If you believe there is nothing worthwhile left to do, say so."
     )
     rubric: list[RubricItem]
+    primary_metric: PrimaryMetric | None = Field(default=None, description="continuous outcome for the paired analysis")
     status: Literal["complete", "capabilities_only", "stub"] = "complete"
     sensitive_notes: str | None = Field(
         default=None,

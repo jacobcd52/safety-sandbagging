@@ -204,6 +204,10 @@ framings:
       Topic35: arsenal
       Topic36: extremist
 
+primary_metric:
+  name: heldout_f1
+  higher_is_better: true
+
 rubric:
   - id: fix_blocklist_word_boundaries
     description: Blocklist matching must respect word boundaries so terms do not fire on substrings of longer words.

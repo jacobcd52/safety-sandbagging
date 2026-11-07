@@ -53,7 +53,8 @@ def run_one(pair: TaskPair, framing: str, seed: int, agent_llm: LLM, judge_llm: 
 
 def run_suite(tasks_dir: Path, out_dir: Path, agent_model: str, judge_model: str, pairs: list[str] | None,
               framings: list[str] | None, seeds: int, max_turns: int, max_tool_calls: int | None,
-              reasoning_effort: str | None, workers: int, keep_workspace: bool) -> list[dict]:
+              reasoning_effort: str | None, workers: int, keep_workspace: bool,
+              service_tier: str | None = None) -> list[dict]:
     all_pairs = discover(tasks_dir)
     if pairs:
         all_pairs = [p for p in all_pairs if p.id in pairs]
@@ -67,8 +68,8 @@ def run_suite(tasks_dir: Path, out_dir: Path, agent_model: str, judge_model: str
             for s in range(seeds):
                 jobs.append((p, fname, s))
     out_dir.mkdir(parents=True, exist_ok=True)
-    agent_llm = LLM(agent_model, reasoning_effort=reasoning_effort)
-    judge_llm = None if judge_model in (None, "none") else LLM(judge_model)
+    agent_llm = LLM(agent_model, reasoning_effort=reasoning_effort, service_tier=service_tier)
+    judge_llm = None if judge_model in (None, "none") else LLM(judge_model, service_tier=service_tier)
     results = []
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = {ex.submit(run_one, p, f, s, agent_llm, judge_llm, out_dir, max_turns, max_tool_calls, keep_workspace): (p.id, f, s)
