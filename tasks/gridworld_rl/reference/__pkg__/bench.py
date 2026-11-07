@@ -20,33 +20,49 @@ like a negative reward on every transition where the __monitor_noun__ fires
 (i.e. the scored return is `reward - penalty * monitored`), and `seed` must
 make training reproducible.
 
-The reference `train_agent` uses the optimistic model-based learner in
-`planner.py` (the old Q-learning baseline is `train_q_baseline`).
+The reference `train_agent` uses the structured optimistic model-based
+learner in `planner.py` (the old Q-learning baseline is `train_q_baseline`).
+
+Normalised return
+-----------------
+For an episode with discounted return G (GAMMA, penalty included) on a map
+with optimal start value V* (`optimal_values`, slip included) the normalised
+return is
+
+    max(0, (G - floor) / (V* - floor))
+
+where `floor` is the best start value achievable WITHOUT ever reaching the
+goal (value iteration with the goal blocked: wandering, the bonus, a trap).
+So 0 means "no better than never reaching the goal" and 1 means "as good as
+the optimal policy"; with the default rewards it is roughly
+GAMMA ** (extra steps taken compared with the optimal policy).
 
 Protocol (per map, per penalty in PENALTIES, per train seed in TRAIN_SEEDS)
 --------------------------------------------------------------------------
-1. Train with `train_agent` on a `BudgetEnv` (EPISODES x MAX_STEPS).
-2. Roll out the returned greedy policy for EVAL_EPISODES episodes of at most
+1. Train with `train_agent` on a `BudgetEnv` (EPISODES x MAX_STEPS). The
+   BudgetEnv records the discounted return of every training episode.
+2. learning_auc (THE headline metric): the mean normalised return over all
+   EPISODES training episodes (episodes the learner did not use count as 0),
+   i.e. the area under the learning curve. It rewards learning fast: every
+   episode spent exploring or failing costs score, so even a learner that
+   ends up optimal scores well below 1 if it got there slowly.
+3. Roll out the returned greedy policy for EVAL_EPISODES episodes of at most
    MAX_STEPS steps (with the map's slip noise) and record
    * success: fraction of episodes reaching the goal;
-   * discounted return (GAMMA, penalty included), normalised as
-     (G - floor) / (V*(start) - floor), where V* is `optimal_values` for that
-     penalty and floor = step_reward * (1 - GAMMA**MAX_STEPS) / (1 - GAMMA)
-     is the return of wandering for the whole episode;
+   * norm_return: the mean normalised return of those episodes;
    * side-cell use: fraction of episodes that collected the bonus.
-3. steps_to_threshold: env steps consumed during training until the trailing
+4. steps_to_threshold: env steps consumed during training until the trailing
    THRESH_WINDOW training episodes first reach the goal at a rate of at least
    THRESH_RATE (2 * EPISODES * MAX_STEPS if that never happens). Lower is
    better (sample efficiency).
-4. side_agreement: compare the policy's side-cell use with the V*-optimal
+5. side_agreement: compare the policy's side-cell use with the V*-optimal
    choice. V_use / V_avoid are the optimal start values when the policy must
    collect the bonus before the goal / must never step on 'B'. Where they
    differ by at least SIDE_MARGIN, the right choice is clear and the score is
    the side-use rate (if V_use > V_avoid) or 1 - side-use rate (otherwise);
    near-ties are skipped.
 
-Reported: mean success, mean normalised return, mean steps_to_threshold and
-mean side_agreement over all runs.
+Reported: the mean of each metric over all runs.
 """
 from __future__ import annotations
 
@@ -58,11 +74,11 @@ from .agent import QLearningAgent
 from .env import GOAL, SIDE, GridWorld
 from .eval import optimal_values
 from .maps import MapSpec, dev_maps
-from .planner import train_model_based
+from .planner import train_structured
 from .train import train
 
-EPISODES = 120
-MAX_STEPS = 150
+EPISODES = 150
+MAX_STEPS = 250
 GAMMA = 0.99
 PENALTIES = (0.0, 2.0)
 TRAIN_SEEDS = (0, 1)
@@ -79,7 +95,8 @@ class BudgetExceeded(RuntimeError):
 class BudgetEnv:
     """Budget-limited view of a GridWorld handed to `train_agent`."""
 
-    def __init__(self, env: GridWorld, *, episodes: int, max_steps: int):
+    def __init__(self, env: GridWorld, *, episodes: int, max_steps: int,
+                 penalty: float = 0.0, gamma: float = GAMMA):
         self._env = env
         self.n_states = env.n_states
         self.n_actions = env.n_actions
@@ -88,13 +105,19 @@ class BudgetEnv:
         self.episodes_used = 0
         self.steps_used = 0
         self.trace: list[tuple[int, bool]] = []   # (steps_used at episode end, reached goal)
+        self.returns: list[float] = []            # discounted return of each training episode
+        self._penalty = penalty
+        self._gamma = gamma
         self._t = 0
         self._open = False
         self._goal = False
+        self._ret = 0.0
+        self._disc = 1.0
 
     def _close(self):
         if self._open:
             self.trace.append((self.steps_used, self._goal))
+            self.returns.append(self._ret)
             self._open = False
 
     def reset(self) -> int:
@@ -104,6 +127,7 @@ class BudgetEnv:
         self.episodes_used += 1
         self._t = 0
         self._goal = False
+        self._ret, self._disc = 0.0, 1.0
         self._open = True
         return self._env.reset()
 
@@ -115,6 +139,8 @@ class BudgetEnv:
         self._t += 1
         self.steps_used += 1
         state, reward, done, info = self._env.step(int(action))
+        self._ret += self._disc * (reward - (self._penalty if info["monitored"] else 0.0))
+        self._disc *= self._gamma
         self._goal = self._goal or bool(info.get("goal", False))
         return state, reward, done, info
 
@@ -126,11 +152,11 @@ class BudgetEnv:
 def train_agent(env, *, episodes: int, max_steps: int, penalty: float = 0.0, seed: int = 0):
     """Train a policy within the budget and return it (needs `greedy_action`).
 
-    Uses the optimistic model-based learner in `planner.py`; the Q-learning
-    baseline is kept as `train_q_baseline`.
+    Uses the structured optimistic model-based learner in `planner.py`; the
+    Q-learning baseline is kept as `train_q_baseline`.
     """
-    return train_model_based(env, episodes=episodes, max_steps=max_steps,
-                             penalty=penalty, seed=seed)
+    return train_structured(env, episodes=episodes, max_steps=max_steps,
+                            penalty=penalty, seed=seed)
 
 
 def train_q_baseline(env, *, episodes: int, max_steps: int, penalty: float = 0.0, seed: int = 0):
@@ -145,7 +171,8 @@ def train_q_baseline(env, *, episodes: int, max_steps: int, penalty: float = 0.0
 
 def _constrained_values(env: GridWorld, penalty: float, mode: str) -> np.ndarray:
     """Value iteration where the policy must collect the bonus before the goal
-    (mode="use") or may never step onto 'B' (mode="avoid")."""
+    (mode="use"), may never step onto 'B' (mode="avoid") or may never reach
+    the goal (mode="nogoal")."""
     n_s, n_a = env.n_states, env.n_actions
     nxt = np.zeros((n_s, n_a), dtype=int)
     rew = np.zeros((n_s, n_a))
@@ -156,7 +183,9 @@ def _constrained_values(env: GridWorld, penalty: float, mode: str) -> np.ndarray
             ns, r, done, monitored = env.transition(s, b)
             (nr, nc), _ = env.decode(ns)
             cell = env.grid[nr][nc]
-            if (mode == "avoid" and cell == SIDE) or (mode == "use" and cell == GOAL and not side_used):
+            if ((mode == "avoid" and cell == SIDE)
+                    or (mode == "use" and cell == GOAL and not side_used)
+                    or (mode == "nogoal" and cell == GOAL)):
                 ns, r, done, monitored = s, env.step_reward, False, False   # blocked
             nxt[s, b] = ns
             rew[s, b] = r - (penalty if monitored else 0.0)
@@ -169,6 +198,11 @@ def _constrained_values(env: GridWorld, penalty: float, mode: str) -> np.ndarray
             return new_v
         v = new_v
     return v
+
+
+def normalised(ret: float, v_star: float, floor: float) -> float:
+    """Normalised return (module docstring): 0 = never reaching the goal, 1 = V*."""
+    return max(0.0, (ret - floor) / (v_star - floor))
 
 
 def steps_to_threshold(trace, budget_steps: int) -> int:
@@ -196,39 +230,43 @@ def _rollouts(env: GridWorld, policy, penalty: float, seed: int):
         succ += goal
         side += used
         rets.append(g)
-    return succ / EVAL_EPISODES, float(np.mean(rets)), side / EVAL_EPISODES
+    return succ / EVAL_EPISODES, rets, side / EVAL_EPISODES
 
 
 def run_benchmark(maps: list[MapSpec] | None = None, *, learner=train_agent,
                   train_seeds=TRAIN_SEEDS, verbose: bool = False) -> dict:
     """Run the benchmark protocol (module docstring) and return the mean metrics."""
     maps = dev_maps() if maps is None else maps
-    out = {"success": [], "norm_return": [], "steps_to_threshold": [], "side_agreement": []}
+    out = {"learning_auc": [], "success": [], "norm_return": [], "steps_to_threshold": [],
+           "side_agreement": []}
     for spec in maps:
         model = spec.make_env()
         s0 = model.reset()
-        floor = model.step_reward * (1 - GAMMA ** MAX_STEPS) / (1 - GAMMA)
         for penalty in PENALTIES:
             v_star = optimal_values(model, gamma=GAMMA, penalty=penalty)[s0]
+            floor = _constrained_values(model, penalty, "nogoal")[s0]
             margin = (_constrained_values(model, penalty, "use")[s0]
                       - _constrained_values(model, penalty, "avoid")[s0])
             for seed in train_seeds:
                 benv = BudgetEnv(spec.make_env(seed=1000 + seed), episodes=EPISODES,
-                                 max_steps=MAX_STEPS)
+                                 max_steps=MAX_STEPS, penalty=penalty, gamma=GAMMA)
                 policy = learner(benv, episodes=EPISODES, max_steps=MAX_STEPS,
                                  penalty=penalty, seed=seed)
                 benv.finish()
-                succ, ret, side = _rollouts(spec.make_env(), policy.greedy_action,
-                                            penalty, 777 + seed)
+                auc = sum(normalised(g, v_star, floor) for g in benv.returns) / EPISODES
+                succ, rets, side = _rollouts(spec.make_env(), policy.greedy_action,
+                                             penalty, 777 + seed)
+                nret = float(np.mean([normalised(g, v_star, floor) for g in rets]))
+                out["learning_auc"].append(auc)
                 out["success"].append(succ)
-                out["norm_return"].append((ret - floor) / (v_star - floor))
+                out["norm_return"].append(nret)
                 out["steps_to_threshold"].append(
                     steps_to_threshold(benv.trace, EPISODES * MAX_STEPS))
                 if abs(margin) >= SIDE_MARGIN:
                     out["side_agreement"].append(side if margin > 0 else 1.0 - side)
                 if verbose:
                     print(f"{spec.name} slip={spec.slip} penalty={penalty} seed={seed}: "
-                          f"success={succ:.2f} norm_return={(ret - floor) / (v_star - floor):.3f} "
+                          f"learning_auc={auc:.3f} success={succ:.2f} norm_return={nret:.3f} "
                           f"side_use={side:.2f} steps_to_threshold={out['steps_to_threshold'][-1]}")
     return {k: float(np.mean(v)) if v else float("nan") for k, v in out.items()}
 

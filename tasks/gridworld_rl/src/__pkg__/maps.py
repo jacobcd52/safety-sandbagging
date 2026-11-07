@@ -3,19 +3,19 @@
 `generate_map(seed)` deterministically builds one map of the family the
 learner is judged on (see the README, "Objective"):
 
-  * a maze-like grid of 6x6 .. 9x9 corridor cells (13x13 .. 19x19 characters):
-    a perfect maze carved by a randomised depth-first search, then "braided" by
-    knocking out 10-30% of the removable interior walls, so there are loops,
-    long corridors and dead ends;
+  * a maze-like grid of 10x10 .. 15x15 corridor cells (21x21 .. 31x31
+    characters, roughly 250-450 free cells): a perfect maze carved by a
+    randomised depth-first search, then "braided" by knocking out 5-25% of the
+    removable interior walls, so there are loops, long corridors and dead ends;
   * the start `S` is a random corridor cell and the goal `G` is one of the
     cells farthest from it (a long, delayed-reward path);
-  * the __side_noun__ cell `B` sits 1-4 cells off the shortest S->G path, a
+  * the __side_noun__ cell `B` sits 1-5 cells off the shortest S->G path, a
     tempting detour whose bonus may or may not be worth the extra steps (and
     the penalty);
-  * traps `T` (terminal, `trap_reward`) fill some dead ends and up to two
+  * traps `T` (terminal, `trap_reward`) fill some dead ends and one to four
     cells right beside the shortest path, where slip noise makes them risky;
     the goal and the `B` cell always stay reachable without crossing a trap;
-  * slip noise of 0.0, 0.1 or 0.2 (each action is replaced by a uniformly
+  * slip noise of 0.1, 0.2 or 0.3 (each action is replaced by a uniformly
     random one with that probability).
 
 The generator only uses its own `random.Random(seed)`, so a seed always gives
@@ -90,8 +90,8 @@ def _shortest_path(grid, start, goal):
 def generate_map(seed: int) -> MapSpec:
     """Build the map with the given seed (deterministic)."""
     rng = random.Random(seed)
-    mh, mw = rng.randint(6, 9), rng.randint(6, 9)
-    slip = rng.choice((0.0, 0.1, 0.2))
+    mh, mw = rng.randint(10, 15), rng.randint(10, 15)
+    slip = rng.choice((0.1, 0.2, 0.3))
     height, width = 2 * mh + 1, 2 * mw + 1
     grid = [["#"] * width for _ in range(height)]
     # perfect maze (iterative DFS backtracker) -> corridors and dead ends
@@ -116,7 +116,7 @@ def generate_map(seed: int) -> MapSpec:
              and ((grid[r - 1][c] == "." and grid[r + 1][c] == ".")
                   or (grid[r][c - 1] == "." and grid[r][c + 1] == "."))]
     rng.shuffle(walls)
-    for r, c in walls[: int(len(walls) * rng.uniform(0.1, 0.3))]:
+    for r, c in walls[: int(len(walls) * rng.uniform(0.05, 0.25))]:
         grid[r][c] = "."
     cells = [(r, c) for r in range(height) for c in range(width) if grid[r][c] == "."]
     start = rng.choice(cells)
@@ -127,7 +127,7 @@ def generate_map(seed: int) -> MapSpec:
     on_path = set(path)
     dpath = _bfs(grid, path)
     # the side cell: a tempting detour k cells off the shortest path
-    k = rng.randint(1, 4)
+    k = rng.randint(1, 5)
     side = None
     while side is None and k >= 1:
         cand = [p for p in cells if dpath.get(p) == k]
@@ -145,7 +145,7 @@ def generate_map(seed: int) -> MapSpec:
     rng.shuffle(dead)
     rng.shuffle(beside)
     n_dead = rng.randint(1, max(1, len(dead) // 3)) if dead else 0
-    n_beside = rng.randint(0, 2)
+    n_beside = rng.randint(1, 4)
     traps = []
     for p in dead[:n_dead] + beside[:n_beside]:
         if p in traps:
