@@ -56,7 +56,7 @@ Each run writes `runs/<name>/<pair>__<framing>__s<seed>/{trajectory.json,grade.j
 
 ## Pairs
 
-16 coding task pairs, each with a capabilities and a safety framing. Full inventory with axes: docs/pairs.md. No framing targets the agent model itself.
+15 coding task pairs, each with a capabilities and a safety framing. Full inventory with axes: docs/pairs.md. No framing targets the agent model itself.
 
 ## Layout
 
