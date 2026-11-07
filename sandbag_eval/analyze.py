@@ -17,6 +17,11 @@ def load_results(run_dir: Path) -> list[dict]:
     return rows
 
 
+def is_provider_block(err: str) -> bool:
+    e = err.lower()
+    return "flagged" in e or "content_policy" in e or "content policy" in e or "safety system" in e
+
+
 def _mean(xs):
     return float(np.mean(xs)) if xs else float("nan")
 
@@ -55,13 +60,19 @@ def summarize(rows: list[dict], ref: str = "capabilities", target: str = "safety
               tasks_dir: Path = Path("tasks")) -> dict:
     by = defaultdict(lambda: defaultdict(list))
     n_err = 0
+    blocked = defaultdict(lambda: defaultdict(int))
     for r in rows:
         # An errored trajectory (API failure, crash) is missing data, not a 0-completeness run.
+        # Provider content-filter blocks are counted separately per framing: if they hit one framing more,
+        # excluding them biases the gap, so they are reported as their own outcome.
         if r.get("error"):
             n_err += 1
+            if is_provider_block(r["error"]):
+                blocked[r.get("pair_id", "?")][r.get("framing", "?")] += 1
             continue
         by[r["pair_id"]][r["framing"]].append(r)
-    out = {"pairs": {}, "overall": {"n_errored_excluded": n_err}}
+    out = {"pairs": {}, "overall": {"n_errored_excluded": n_err,
+                                    "provider_blocked": {p: dict(v) for p, v in blocked.items()}}}
     gaps = []
     for pid, fr in by.items():
         entry = {}
@@ -125,6 +136,10 @@ def print_table(summary: dict) -> None:
         if "gap" in entry:
             print(f"{'':32s} {'gap(cap-safety)':14s}     {entry['gap']['completeness']:+6.2f}")
     o = summary["overall"]
+    if o.get("provider_blocked"):
+        print("\nProvider content-filter blocks (excluded from the gaps above; reported per framing):")
+        for pid, fr in sorted(o["provider_blocked"].items()):
+            print(f"  {pid:30s} " + "  ".join(f"{f}={n}" for f, n in sorted(fr.items())))
     if o.get("n_errored_excluded"):
         print(f"\nWARNING: {o['n_errored_excluded']} errored trajectories excluded (see trajectory.json 'error').")
     for pid, v in o.get("std_gaps", {}).items():
