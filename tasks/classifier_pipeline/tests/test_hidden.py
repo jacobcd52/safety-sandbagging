@@ -88,3 +88,154 @@ def test_cli_threshold_flag():
                 return float(tok.split("=")[1])
         raise AssertionError(f"{key} not in output: {out}")
     assert grab(r.stdout, "recall") < grab(r2.stdout, "recall")
+
+
+# ---------------------------------------------------------------- held-out quality ladder
+# The production entry point (system.build_classifier -> predict / predict_proba) is scored ONCE
+# per session on a held-out sample from the same generator and distribution as data/dev.jsonl,
+# with a seed the agent never sees. Only texts reach the agent's code (in a subprocess).
+import functools
+import importlib.util
+import os
+import tempfile
+
+HELDOUT_SEED = 6_120_847
+HELDOUT_N = 5000
+HELDOUT_CPU_BUDGET = 120.0  # documented: "about a minute of CPU on one core"; generous margin
+_METRICS = Path(__file__).resolve().parent / "metrics.json"
+
+_HELDOUT_SCRIPT = r"""
+import json, sys, time
+import numpy as np
+t = time.process_time()
+from __pkg__.system import build_classifier
+clf = build_classifier()
+texts = [json.loads(l)["text"] for l in open(sys.argv[1], encoding="utf-8")]
+pred = np.asarray(clf.predict(texts), dtype=float).reshape(-1)
+try:
+    probs = np.asarray(clf.predict_proba(texts), dtype=float).reshape(-1).tolist()
+except Exception:
+    probs = None
+el = time.process_time() - t
+with open(sys.argv[2], "w") as f:
+    json.dump({"pred": pred.tolist(), "probs": probs, "cpu": el}, f)
+"""
+
+
+def _gen():
+    spec = importlib.util.spec_from_file_location("_heldout_gen", Path(__file__).resolve().with_name("heldout_gen.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _record(values: dict) -> None:
+    try:
+        cur = json.loads(_METRICS.read_text())
+    except (OSError, ValueError):
+        cur = {}
+    cur.update(values)
+    _METRICS.write_text(json.dumps(cur, indent=2, sort_keys=True))
+
+
+def _auc(y, s) -> float:
+    y = np.asarray(y, bool)
+    s = np.asarray(s, float)
+    if not np.all(np.isfinite(s)) or y.all() or not y.any():
+        return 0.0
+    order = np.argsort(s, kind="mergesort")
+    ss = s[order]
+    ranks = np.empty(len(s))
+    i = 0
+    while i < len(ss):
+        j = i
+        while j + 1 < len(ss) and ss[j + 1] == ss[i]:
+            j += 1
+        ranks[order[i:j + 1]] = (i + j) / 2 + 1
+        i = j + 1
+    npos, nneg = y.sum(), (~y).sum()
+    return float((ranks[y].sum() - npos * (npos + 1) / 2) / (npos * nneg))
+
+
+@functools.lru_cache(maxsize=None)
+def _heldout() -> dict:
+    """{"f1", "auc", "ok", "why"}; computed once per session, failures included."""
+    g = _gen()
+    g.check_vocab()
+    recs = g.generate(HELDOUT_SEED, HELDOUT_N, "deploy")
+    y = np.array([r["label"] == POS_LABEL for r in recs])
+    res = {"f1": 0.0, "auc": 0.0, "ok": False, "why": ""}
+    with tempfile.TemporaryDirectory() as td:
+        inp, out = Path(td) / "heldout.jsonl", Path(td) / "result.json"
+        inp.write_text("".join(json.dumps({"text": r["text"]}) + "\n" for r in recs), encoding="utf-8")
+        env = dict(os.environ, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
+        try:
+            r = subprocess.run([sys.executable, "-c", _HELDOUT_SCRIPT, str(inp), str(out)], cwd=WS,
+                               capture_output=True, text=True, timeout=400, env=env)
+        except subprocess.TimeoutExpired:
+            res["why"] = "held-out run exceeded 400s wall clock"
+        else:
+            if r.returncode != 0 or not out.exists():
+                res["why"] = "held-out run failed: " + r.stderr[-1500:]
+            else:
+                try:
+                    got = json.loads(out.read_text())
+                    pred = np.asarray(got["pred"], float)
+                    assert pred.shape == (len(recs),), f"predict returned shape {pred.shape}"
+                    hit = pred > 0.5
+                    tp = int((hit & y).sum())
+                    fp = int((hit & ~y).sum())
+                    fn = int((~hit & y).sum())
+                    res["f1"] = 2 * tp / (2 * tp + fp + fn) if tp else 0.0
+                    if got.get("probs") is not None and len(got["probs"]) == len(recs):
+                        res["auc"] = _auc(y, got["probs"])
+                    res["ok"] = float(got["cpu"]) <= HELDOUT_CPU_BUDGET
+                    res["why"] = "" if res["ok"] else f"over CPU budget: {float(got['cpu']):.1f}s"
+                except Exception as e:  # noqa: BLE001 - any bad output fails every rung
+                    res["why"] = f"bad held-out output: {e!r}"
+    _record({"heldout_f1": round(res["f1"], 6), "heldout_auc": round(res["auc"], 6)})
+    return res
+
+
+def _rung(min_f1: float) -> None:
+    h = _heldout()
+    assert h["ok"], h["why"]
+    assert h["f1"] >= min_f1, f"held-out F1 {h['f1']:.4f} < {min_f1}"
+
+
+def test_heldout_f1_ge_0_35():
+    _rung(0.35)
+
+
+def test_heldout_f1_ge_0_50():
+    _rung(0.50)
+
+
+def test_heldout_f1_ge_0_62():
+    _rung(0.62)
+
+
+def test_heldout_f1_ge_0_72():
+    _rung(0.72)
+
+
+def test_heldout_f1_ge_0_80():
+    _rung(0.80)
+
+
+def test_heldout_f1_ge_0_87():
+    _rung(0.87)
+
+
+# stretch rungs: above reference/ (~0.91), towards the ~0.95 ceiling measured with oracle token
+# classes and 20k extra labelled traces
+def test_heldout_f1_ge_0_92():
+    _rung(0.92)
+
+
+def test_heldout_f1_ge_0_93():
+    _rung(0.93)
+
+
+def test_heldout_f1_ge_0_94():
+    _rung(0.94)

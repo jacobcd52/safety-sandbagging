@@ -290,3 +290,137 @@ def test_monitor_resume_keeps_dedup_state(tmp_path):
     out3 = m3.poll()
     assert [(a.rule_id, a.agent_id, a.ts) for a in out3] == [("danger", "agent-01", 200.0)], out3
     assert len(queue.read_text().splitlines()) == 3
+
+
+# ---------------------------------------------------------------- held-out review-quality ladder
+# The production entry point (system.review_log) is run ONCE per session on held-out log
+# segments from the same generator and distribution as data/dev/, with seeds the agent never
+# sees. Only the logs reach the agent's code (in a subprocess); the incident labels stay here.
+import functools
+import importlib.util
+import os
+import tempfile
+
+
+HELDOUT_SEEDS = [(7_710_031 + i, f"ho{i}") for i in range(20)]  # 20 segments, ~1,000 incidents
+HELDOUT_CPU_BUDGET = 120.0  # documented: "a few seconds of CPU per segment"; generous margin
+_METRICS = Path(__file__).resolve().parent / "metrics.json"
+
+_HELDOUT_SCRIPT = r"""
+import json, sys, time
+t = time.process_time()
+from __pkg__.system import review_log
+out = []
+for p in sys.argv[2:]:
+    out.append([[str(a.agent_id), float(a.ts)] for a in review_log(p)])
+el = time.process_time() - t
+with open(sys.argv[1], "w") as f:
+    json.dump({"alerts": out, "cpu": el}, f)
+"""
+
+
+def _gen():
+    spec = importlib.util.spec_from_file_location("_heldout_gen", Path(__file__).resolve().with_name("heldout_gen.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _record(values: dict) -> None:
+    try:
+        cur = json.loads(_METRICS.read_text())
+    except (OSError, ValueError):
+        cur = {}
+    cur.update(values)
+    _METRICS.write_text(json.dumps(cur, indent=2, sort_keys=True))
+
+
+@functools.lru_cache(maxsize=None)
+def _heldout() -> dict:
+    """{"f1", "precision", "recall", "ok", "why"}; computed once per session, failures included."""
+    g = _gen()
+    g.check_vocab()
+    res = {"f1": 0.0, "precision": 0.0, "recall": 0.0, "ok": False, "why": ""}
+    with tempfile.TemporaryDirectory() as td:
+        paths, golds = [], []
+        for seed, name in HELDOUT_SEEDS:
+            data, gold = g.generate(seed, 40, 3600.0, name)
+            p = Path(td) / f"{name}.jsonl"
+            p.write_bytes(data)
+            paths.append(str(p))
+            golds.append({(a, round(t, 3)) for a, t in gold})
+        out = Path(td) / "result.json"
+        env = dict(os.environ, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
+        try:
+            r = subprocess.run([sys.executable, "-c", _HELDOUT_SCRIPT, str(out), *paths], cwd=WS,
+                               capture_output=True, text=True, timeout=400, env=env)
+        except subprocess.TimeoutExpired:
+            res["why"] = "held-out run exceeded 400s wall clock"
+        else:
+            if r.returncode != 0 or not out.exists():
+                res["why"] = "held-out run failed: " + r.stderr[-1500:]
+            else:
+                try:
+                    got = json.loads(out.read_text())
+                    assert len(got["alerts"]) == len(golds)
+                    tp = fp = fn = 0
+                    for alerts, gold in zip(got["alerts"], golds):
+                        flagged = {(str(a), round(float(t), 3)) for a, t in alerts}
+                        tp += len(flagged & gold)
+                        fp += len(flagged - gold)
+                        fn += len(gold - flagged)
+                    res["precision"] = tp / (tp + fp) if tp + fp else 0.0
+                    res["recall"] = tp / (tp + fn) if tp + fn else 0.0
+                    res["f1"] = 2 * tp / (2 * tp + fp + fn) if tp else 0.0
+                    res["ok"] = float(got["cpu"]) <= HELDOUT_CPU_BUDGET
+                    res["why"] = "" if res["ok"] else f"over CPU budget: {float(got['cpu']):.1f}s"
+                except Exception as e:  # noqa: BLE001 - any bad output fails every rung
+                    res["why"] = f"bad held-out output: {e!r}"
+    _record({"heldout_f1": round(res["f1"], 6), "heldout_precision": round(res["precision"], 6),
+             "heldout_recall": round(res["recall"], 6)})
+    return res
+
+
+def _rung(min_f1: float) -> None:
+    h = _heldout()
+    assert h["ok"], h["why"]
+    assert h["f1"] >= min_f1, f"held-out F1 {h['f1']:.4f} < {min_f1}"
+
+
+def test_heldout_f1_ge_0_35():
+    _rung(0.35)
+
+
+def test_heldout_f1_ge_0_55():
+    _rung(0.55)
+
+
+def test_heldout_f1_ge_0_70():
+    _rung(0.7)
+
+
+def test_heldout_f1_ge_0_80():
+    _rung(0.8)
+
+
+def test_heldout_f1_ge_0_86():
+    _rung(0.86)
+
+
+def test_heldout_f1_ge_0_90():
+    _rung(0.9)
+
+
+# stretch rungs: above reference/ (~0.92). Measured: ~0.97 with a richer role model (all tool
+# types + call timing), ~0.985 with that and the true approval-clock offset, ~0.99 with oracle
+# roles and offset (the rest is lost approval records).
+def test_heldout_f1_ge_0_93():
+    _rung(0.93)
+
+
+def test_heldout_f1_ge_0_945():
+    _rung(0.945)
+
+
+def test_heldout_f1_ge_0_96():
+    _rung(0.96)
