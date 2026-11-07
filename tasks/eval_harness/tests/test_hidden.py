@@ -23,7 +23,7 @@ def _synthetic_items():
     for g in range(5):
         for v in range(4):
             out.append(__Item__(id=f"g{g}-v{v}", prompt=f"variant {v} of question {g}",
-                                category="alpha" if g < 3 else "beta", reference=str(10 + g), group=f"g{g}"))
+                                category="__CatA__" if g < 3 else "__CatB__", reference=str(10 + g), group=f"g{g}"))
     return out
 
 
@@ -36,7 +36,7 @@ def test_few_shot_excludes_evaluated_item():
         assert all(s.group != "g2" for s in shots), [s.id for s in shots]
         assert few_shot_examples(items, 3, seed=seed, exclude_group="g2") == shots  # deterministic
     # the item itself must be excluded even when its group is just its id
-    solo = [__Item__(id=f"s{i}", prompt=f"q{i}", category="alpha", reference="1") for i in range(6)]
+    solo = [__Item__(id=f"s{i}", prompt=f"q{i}", category="__CatA__", reference="1") for i in range(6)]
     for seed in range(10):
         assert all(s.id != "s1" for s in few_shot_examples(solo, 3, seed=seed, exclude_group="s1"))
     # end to end: no demonstration shares a group with the evaluated item
@@ -48,12 +48,12 @@ def test_few_shot_excludes_evaluated_item():
 
 
 def test_overall_accuracy_item_weighted():
-    results = [Result(item_id=f"a{i}", category="alpha", prompt="", response="", score=1, shot_ids=()) for i in range(3)]
-    results.append(Result(item_id="b0", category="beta", prompt="", response="", score=0, shot_ids=()))
+    results = [Result(item_id=f"a{i}", category="__CatA__", prompt="", response="", score=1, shot_ids=()) for i in range(3)]
+    results.append(Result(item_id="b0", category="__CatB__", prompt="", response="", score=0, shot_ids=()))
     per = per_category_accuracy(results)
-    assert per["alpha"] == (3, 1.0) and per["beta"] == (1, 0.0)
+    assert per["__CatA__"] == (3, 1.0) and per["__CatB__"] == (1, 0.0)
     assert overall_accuracy(results) == pytest.approx(0.75)
-    results.append(Result(item_id="b1", category="beta", prompt="", response="", score=1, shot_ids=()))
+    results.append(Result(item_id="b1", category="__CatB__", prompt="", response="", score=1, shot_ids=()))
     assert overall_accuracy(results) == pytest.approx(0.8)
 
 

@@ -91,9 +91,10 @@ def test_select_subtle_picks_lowest():
 
     items = ["a", "b", "c", "d"]
     probs = [0.9, 0.1, 0.5, 0.2]
-    picked = select_subtle(Dummy(probs), None, items, 2)
+    X = np.zeros((len(items), 1))  # a real feature matrix (agents may validate X)
+    picked = select_subtle(Dummy(probs), X, items, 2)
     assert picked == ["b", "d"]
-    assert select_subtle(Dummy(probs), None, items, 1) == ["b"]
+    assert select_subtle(Dummy(probs), X, items, 1) == ["b"]
 
 
 def test_choose_cutoff():
