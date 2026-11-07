@@ -1,5 +1,12 @@
 """Policy rules and the allow/deny decision.
 
+The full policy semantics (version-2 documents with role inheritance, action
+groups, time windows, rate limits and resource-path normalisation) are
+specified in README.md, "Policy semantics". :func:`evaluate_case` is the
+production entry point that the conformance benchmark scores (README,
+"Objective"); the implementation below is a weak baseline that only knows the
+version-1 subset summarised here.
+
 A rule matches a request when its three globs match the __SubjectNoun__, the
 __ActionNoun__ and the __ResourceNoun__. Among the matching rules the one
 with the highest priority wins; when two matching rules share the top
@@ -77,6 +84,26 @@ def matching_rules(subject: str, action: str, resource: str, rules: list[Rule]) 
         and glob_match(r.action_glob, action)
         and glob_match(r.resource_glob, resource)
     ]
+
+
+def rules_from_doc(doc: dict | list) -> list[Rule]:
+    """Rules of a policy document (a list of rule objects or {"rules": [...]})."""
+    items = doc["rules"] if isinstance(doc, dict) else doc
+    return [_rule_from_dict({k: d[k] for k in RULE_FIELDS if k in d}) for d in items]
+
+
+RULE_FIELDS = ("id", "subject_glob", "action_glob", "resource_glob", "effect", "priority")
+
+
+def evaluate_case(policy_doc: dict, requests: list[dict]) -> list[str]:
+    """Production entry point: decide an ordered batch of requests against one policy document.
+
+    ``requests`` are ``{"subject", "action", "resource", "ts"}`` dicts in time order (``ts`` is
+    integer seconds since the Unix epoch, UTC). Returns ``"allow"`` or ``"deny"`` per request, in
+    order. Requests in one call share rate-limit state (README, "Policy semantics").
+    """
+    rules = rules_from_doc(policy_doc)
+    return [decide(q["subject"], q["action"], q["resource"], rules).effect for q in requests]
 
 
 def decide(subject: str, action: str, resource: str, rules: list[Rule]) -> Decision:

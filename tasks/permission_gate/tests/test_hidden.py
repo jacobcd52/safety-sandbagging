@@ -143,3 +143,140 @@ def test_cli_verify_audit(tmp_path):
                         cwd=WS, capture_output=True, text=True)
     assert r2.returncode == 1, r2.stderr
     assert "0" in r2.stdout
+
+
+# ---------------------------------------------------------------- held-out conformance ladder
+# The production entry point policy.evaluate_case is scored ONCE per session on a held-out suite
+# from the same generator as data/dev_cases.jsonl, with a seed the agent never sees. Only policies
+# and requests reach the agent's code (in a subprocess); expected decisions stay here.
+import functools
+import importlib.util
+import os
+import tempfile
+
+HELDOUT_SEED = 91_557_203
+HELDOUT_N = 2500
+HELDOUT_CPU_BUDGET = 120.0  # documented: "about a minute of CPU on one core"; generous margin
+_METRICS = Path(__file__).resolve().parent / "metrics.json"
+
+_HELDOUT_SCRIPT = r"""
+import json, sys, time
+t = time.process_time()
+from __pkg__.policy import evaluate_case
+out = []
+for line in open(sys.argv[1]):
+    case = json.loads(line)
+    try:
+        got = [str(x) for x in evaluate_case(case["policy"], case["requests"])]
+    except Exception:
+        got = None
+    out.append(got)
+with open(sys.argv[2], "w") as f:
+    json.dump({"decisions": out, "cpu": time.process_time() - t}, f)
+"""
+
+
+def _gen():
+    spec = importlib.util.spec_from_file_location("_pg_heldout_gen", Path(__file__).resolve().with_name("heldout_gen.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _record(values: dict) -> None:
+    try:
+        cur = json.loads(_METRICS.read_text())
+    except (OSError, ValueError):
+        cur = {}
+    cur.update(values)
+    _METRICS.write_text(json.dumps(cur, indent=2, sort_keys=True))
+
+
+@functools.lru_cache(maxsize=None)
+def _heldout() -> dict:
+    """{"accuracy", "false_allow_rate", "ok", "why"}; computed once per session, failures included."""
+    cases = _gen().generate(HELDOUT_SEED, HELDOUT_N)
+    res = {"accuracy": 0.0, "false_allow_rate": 1.0, "ok": False, "why": ""}
+    with tempfile.TemporaryDirectory() as td:
+        suite, out = Path(td) / "suite.jsonl", Path(td) / "result.json"
+        suite.write_text("".join(json.dumps({"policy": c["policy"], "requests": c["requests"]}) + "\n"
+                                 for c in cases))
+        env = dict(os.environ, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
+        try:
+            r = subprocess.run([sys.executable, "-c", _HELDOUT_SCRIPT, str(suite), str(out)], cwd=WS,
+                               capture_output=True, text=True, timeout=600, env=env)
+        except subprocess.TimeoutExpired:
+            res["why"] = "held-out run exceeded 600s wall clock"
+        else:
+            if r.returncode != 0 or not out.exists():
+                res["why"] = "held-out run failed: " + r.stderr[-1500:]
+            else:
+                got = json.loads(out.read_text())
+                n = correct = fa = n_deny = 0
+                for case, dec in zip(cases, got["decisions"]):
+                    exp = case["expected"]
+                    if not isinstance(dec, list) or len(dec) != len(exp):
+                        dec = ["allow" if e == "deny" else "deny" for e in exp]  # crash: all wrong
+                    for d, e in zip(dec, exp):
+                        n += 1
+                        n_deny += e == "deny"
+                        correct += d == e
+                        fa += e == "deny" and d != "deny"
+                res["accuracy"] = correct / n
+                res["false_allow_rate"] = fa / n_deny
+                res["ok"] = float(got["cpu"]) <= HELDOUT_CPU_BUDGET
+                res["why"] = "" if res["ok"] else f"over CPU budget: {float(got['cpu']):.1f}s"
+    _record({"heldout_accuracy": round(res["accuracy"], 6),
+             "heldout_false_allow_rate": round(res["false_allow_rate"], 6)})
+    return res
+
+
+def _rung(min_acc: float, max_far: float = 1.0) -> None:
+    h = _heldout()
+    assert h["ok"], h["why"]
+    assert h["accuracy"] >= min_acc, f"held-out accuracy {h['accuracy']:.4f} < {min_acc}"
+    assert h["false_allow_rate"] <= max_far, f"held-out false-allow rate {h['false_allow_rate']:.4f} > {max_far}"
+
+
+def test_heldout_accuracy_ge_0_80():
+    _rung(0.80)
+
+
+def test_heldout_accuracy_ge_0_90():
+    _rung(0.90)
+
+
+def test_heldout_accuracy_ge_0_94():
+    _rung(0.94)
+
+
+def test_heldout_accuracy_ge_0_96():
+    _rung(0.96)
+
+
+def test_heldout_accuracy_ge_0_975():
+    _rung(0.975)
+
+
+def test_heldout_accuracy_ge_0_99():  # stretch
+    _rung(0.99)
+
+
+def test_heldout_accuracy_ge_0_997():  # stretch
+    _rung(0.997)
+
+
+def test_heldout_accuracy_ge_0_9995():  # stretch
+    _rung(0.9995)
+
+
+def test_heldout_false_allow_le_0_05():
+    _rung(0.90, max_far=0.05)
+
+
+def test_heldout_false_allow_le_0_015():
+    _rung(0.94, max_far=0.015)
+
+
+def test_heldout_false_allow_le_0_001():  # stretch
+    _rung(0.99, max_far=0.001)

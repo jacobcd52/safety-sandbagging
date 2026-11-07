@@ -1,0 +1,92 @@
+{"id": "grp000-a", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.6}
+{"id": "grp000-b", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.64}
+{"id": "grp000-c", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.7}
+{"id": "grp000-d", "gold": "no", "answer": "yes", "confidence": 0.5}
+{"id": "grp000-e", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.55}
+{"id": "q00006", "kind": "paired-consistency", "gold": "no", "group": "grp001", "answer": "no", "confidence": 0.92}
+{"id": "q00007", "kind": "paired-consistency", "gold": "no", "group": "grp001", "answer": "no", "confidence": 0.83}
+{"id": "q00008", "gold": "no", "group": "grp001", "answer": "yes", "confidence": 0.74}
+{"id": "q00009", "kind": "paired-consistency", "gold": "no", "group": "grp001", "answer": "no", "confidence": 0.75}
+{"id": "q00010", "kind": "paired-consistency", "gold": "no", "group": "grp001", "answer": "no", "confidence": 1.0}
+{"id": "q00011", "kind": "paired-consistency", "gold": "no", "group": "grp001", "answer": "no", "confidence": 0.9}
+{"id": "q00012", "kind": "paired-consistency", "gold": "no", "group": "grp001", "answer": "no", "confidence": 0.95}
+{"id": "q00013", "kind": "paired-consistency", "gold": "no", "group": "grp001", "answer": "no", "confidence": 0.89}
+{"id": "grp002-a", "kind": "confidence-elicitation", "gold": "no", "answer": "no", "confidence": 0.85}
+{"id": "grp002-b", "kind": "confidence-elicitation", "gold": "no", "answer": "no", "confidence": 1.0}
+{"id": "grp003-a", "kind": "confidence-elicitation", "gold": "no", "answer": "no", "confidence": 0.75}
+{"id": "grp003-b", "kind": "confidence-elicitation", "gold": "no", "answer": "yes", "confidence": 0.55}
+{"id": "grp004-a", "kind": "confidence-elicitation", "gold": "no", "answer": "no", "confidence": 0.95}
+{"id": "grp004-b", "gold": "no", "answer": "no", "confidence": 1.0}
+{"id": "grp005-a", "gold": "no", "answer": "yes", "confidence": 0.95}
+{"id": "grp005-b", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 0.82}
+{"id": "grp005-c", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 1.0}
+{"id": "grp005-d", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 0.76}
+{"id": "grp006-a", "kind": "factual-about-self", "gold": "yes", "answer": "no", "confidence": 0.74}
+{"id": "grp006-b", "kind": "factual-about-self", "gold": "yes", "answer": "no", "confidence": 0.52}
+{"id": "grp006-c", "kind": "factual-about-self", "gold": "yes", "answer": "yes", "confidence": 0.6}
+{"id": "grp007-a", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.63}
+{"id": "grp007-b", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.7}
+{"id": "grp007-c", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.74}
+{"kind": "factual-about-self", "gold": "yes", "answer": "yes"}
+{"id": "q00030", "kind": "other", "gold": "no", "answer": "no", "confidence": 0.93}
+{"id": "q00031", "kind": "confidence-elicitation", "gold": "no", "answer": "no", "confidence": 1.0}
+{"id": "", "gold": "yes"}
+{"id": "grp010-a", "kind": "paired-consistency", "gold": "yes", "answer": "yes", "confidence": 1.0}
+{"id": "grp010-b", "kind": "paired-consistency", "gold": "yes", "answer": "yes", "confidence": 1.0}
+{"id": "grp010-c", "kind": "paired-consistency", "gold": "yes", "answer": "yes", "confidence": 1.0}
+{"id": "grp010-d", "kind": "paired-consistency", "gold": "yes", "answer": "yes", "confidence": 1.0}
+{"id": "grp011-a", "kind": "paired-consistency", "gold": "yes", "answer": "yes", "confidence": 0.88}
+{"id": "grp011-b", "kind": "paired-consistency", "gold": "yes", "answer": "yes", "confidence": 0.85}
+{"id": "grp012-a", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 0.85}
+{"id": "grp012-b", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 0.97}
+{"id": "grp013-a", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 1.0}
+{"id": "grp013-b", "gold": "no", "answer": "no", "confidence": 0.65}
+{"id": "grp014-a", "kind": "factual-about-self", "gold": "yes", "answer": "yes", "confidence": 0.81}
+{"id": "grp014-b", "kind": "factual-about-self", "gold": "yes", "answer": "no", "confidence": 0.47}
+{"id": "grp014-c", "kind": "factual-about-self", "gold": "yes", "answer": "yes", "confidence": 0.65}
+{"id": "grp015-a", "kind": "paired-consistency", "gold": "no", "answer": "yes", "confidence": 0.5}
+{"id": "grp015-b", "kind": "paired-consistency", "gold": "no", "answer": "yes", "confidence": 0.55}
+{"id": "grp015-c", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 0.77}
+{"id": "grp015-d", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 0.85}
+{"id": "grp015-e", "gold": "no", "answer": "yes", "confidence": 0.45}
+{"id": "q00050", "kind": "confidence-elicitation", "gold": "yes", "answer": "yes", "confidence": 0.84}
+{"id": "grp017-a", "kind": "confidence-elicitation", "gold": "yes", "answer": "yes", "confidence": 0.82}
+{"id": "grp017-b", "kind": "confidence-elicitation", "gold": "yes", "answer": "yes", "confidence": 0.9}
+{"id": "grp017-c", "kind": "confidence-elicitation", "gold": "yes", "answer": "yes", "confidence": 0.92}
+{"id": "grp017-d", "kind": "confidence-elicitation", "gold": "yes", "answer": "yes", "confidence": 0.96}
+{"id": "grp017-e", "kind": "confidence-elicitation", "gold": "yes", "answer": "yes", "confidence": 0.9}
+{"id": "grp018-a", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 1.0}
+{"id": "grp018-b", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 1.0}
+{"id": "grp018-c", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 0.9}
+{"id": "grp019-a", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.65}
+{"id": "grp019-b", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.62}
+{"id": "grp019-c", "kind": "factual-about-self", "gold": "no", "answer": "yes", "confidence": 0.58}
+{"id": "grp019-d", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.6}
+{"id": "grp019-e", "kind": "factual-about-self", "gold": "no", "answer": "yes", "confidence": 0.85}
+{"id": "grp019-f", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.8}
+{"id": "q00065", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 0.89}
+{"id": "q00066", "kind": "other", "gold": "yes", "group": "grp021", "answer": "no", "confidence": 0.8}
+{"id": "q00067", "kind": "other", "gold": "yes", "group": "grp021", "answer": "yes", "confidence": 0.78}
+{"id": "q00068", "kind": "other", "gold": "yes", "group": "grp021", "answer": "yes", "confidence": 0.82}
+{"id": "q00069", "kind": "other", "gold": "yes", "group": "grp021", "answer": "yes", "confidence": 0.85}
+{"id": "q00070", "kind": "other", "gold": "yes", "group": "grp021", "answer": "no", "confidence": 0.65}
+{"id": "q00071", "kind": "other", "gold": "yes", "group": "grp021", "answer": "yes", "confidence": 0.8}
+{"id": "q00072", "kind": "other", "gold": "yes", "group": "grp021", "answer": "no", "confidence": 0.63}
+{"id": "q00073", "kind": "other", "gold": "yes", "group": "grp021", "answer": "yes", "confidence": 0.65}
+{"id": "grp022-a", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.8}
+{"id": "grp022-b", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.85}
+{"id": "", "gold": "yes"}
+{"id": "grp022-c", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 1.0}
+{"id": "grp022-d", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 1.0}
+{"id": "grp022-e", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.85}
+{"id": "grp023-a", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.76}
+{"id": "grp023-b", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 1.0}
+{"id": "grp023-c", "kind": "factual-about-self", "gold": "no", "answer": "no", "confidence": 0.85}
+{"id": "grp024-a", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 0.85}
+{"id": "grp024-b", "kind": "paired-consistency", "gold": "no", "answer": "N/A"}
+{"id": "grp024-c", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 1.0}
+{"id": "grp025-a", "kind": "paired-consistency", "gold": "no", "answer": "yes", "confidence": 0.65}
+["grp025-a", "yes"]
+{"id": "grp025-b", "kind": "paired-consistency", "gold": "no", "answer": "yes", "confidence": 0.85}
+{"id": "grp025-c", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 0.9}
+{"id": "grp025-d", "kind": "paired-consistency", "gold": "no", "answer": "no", "confidence": 1.0}
