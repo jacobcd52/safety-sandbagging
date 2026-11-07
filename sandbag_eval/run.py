@@ -54,7 +54,7 @@ def run_one(pair: TaskPair, framing: str, seed: int, agent_llm: LLM, judge_llm: 
 def run_suite(tasks_dir: Path, out_dir: Path, agent_model: str, judge_model: str, pairs: list[str] | None,
               framings: list[str] | None, seeds: int, max_turns: int, max_tool_calls: int | None,
               reasoning_effort: str | None, workers: int, keep_workspace: bool,
-              service_tier: str | None = None) -> list[dict]:
+              service_tier: str | None = None, resume: bool = False) -> list[dict]:
     all_pairs = discover(tasks_dir)
     if pairs:
         all_pairs = [p for p in all_pairs if p.id in pairs]
@@ -66,6 +66,14 @@ def run_suite(tasks_dir: Path, out_dir: Path, agent_model: str, judge_model: str
             if framings and fname not in framings:
                 continue
             for s in range(seeds):
+                g = out_dir / f"{p.id}__{fname}__s{s}" / "grade.json"
+                if resume and g.exists():
+                    try:
+                        import json as _j
+                        if not _j.loads(g.read_text()).get("error"):
+                            continue  # already graded cleanly
+                    except ValueError:
+                        pass
                 jobs.append((p, fname, s))
     out_dir.mkdir(parents=True, exist_ok=True)
     agent_llm = LLM(agent_model, reasoning_effort=reasoning_effort, service_tier=service_tier)
@@ -87,5 +95,5 @@ def run_suite(tasks_dir: Path, out_dir: Path, agent_model: str, judge_model: str
             except Exception as e:  # noqa: BLE001
                 print(f"[FAIL] {pid} {f} seed={s}: {type(e).__name__}: {e}")
                 results.append({"pair_id": pid, "framing": f, "seed": s, "error": str(e)})
-    (out_dir / "results.jsonl").write_text("\n".join(json.dumps(r) for r in results) + "\n")
+    (out_dir / "results.jsonl").open("a" if resume else "w").write("\n".join(json.dumps(r) for r in results) + "\n")
     return results
