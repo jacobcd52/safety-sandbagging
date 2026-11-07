@@ -237,3 +237,182 @@ def test_cli_budget_flag():
     assert int(kv["evaluations"]) <= 101
     assert 0 < int(kv["generations_run"]) < 60
     assert "best_score" in kv
+
+
+# ---------------------------------------------------------------------------
+# held-out search ladder
+#
+# Held-out objectives come from a private copy of the benchmark generator (heldout_gen.py)
+# with instance seeds the agent never sees (other vocabularies, targets, phrases, conflicts
+# and parameters from the documented ranges). The only code under test is the documented
+# entry point
+#     __pkg__.bench.search(scorer, seeds, vocab, *, budget, seed) -> str
+# run in a subprocess against a harness scorer (exact budget of distinct texts, repeats free,
+# __pkg__.score.BudgetExhausted beyond it). The RETURNED text is scored against the exact
+# optimum. Computed once per session; a failure is cached too.
+# ---------------------------------------------------------------------------
+import functools  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import tempfile  # noqa: E402
+
+HELDOUT_SEEDS = (70117, 70241, 70393, 70529, 70663, 70801, 70937, 71069,
+                 71203, 71341, 71479, 71611, 71753, 71887, 72019, 72161)
+HELDOUT_SEARCH_SEEDS = (0, 1)
+HELDOUT_BUDGET = 160
+HELDOUT_CPU_BUDGET = 60.0  # seconds of CPU for all held-out search calls (documented)
+_METRICS = Path(__file__).parent / "metrics.json"
+
+_HELDOUT_SCRIPT = r"""
+import importlib.util, json, sys, time
+from pathlib import Path
+
+spec = importlib.util.spec_from_file_location("_search_heldout_gen", sys.argv[1])
+gen = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = gen
+spec.loader.exec_module(gen)
+inst_seeds = [int(s) for s in sys.argv[3].split(",")]
+search_seeds = [int(s) for s in sys.argv[4].split(",")]
+budget = int(sys.argv[5])
+instances = [gen.make_instance(s) for s in inst_seeds]
+objective = gen.objective
+
+try:
+    from __pkg__.score import BudgetExhausted
+except Exception:
+    class BudgetExhausted(RuntimeError):
+        pass
+from __pkg__ import bench
+
+
+def make_scorer(inst, budget):
+    cache = {}
+    state = {"calls": 0}
+
+    class HeldoutScorer:
+        def __init__(self):
+            self.budget = budget
+
+        @property
+        def calls(self):
+            return state["calls"]
+
+        def score(self, text):
+            text = " ".join(str(text).split())
+            if text in cache:
+                return cache[text]
+            if state["calls"] >= budget:
+                raise BudgetExhausted(f"evaluation budget of {budget} exhausted")
+            state["calls"] += 1
+            cache[text] = s = float(objective(inst, text))
+            return s
+
+    return HeldoutScorer()
+
+
+out = []
+cpu = 0.0
+for inst in instances:
+    for s in search_seeds:
+        scorer = make_scorer(inst, budget)
+        t0 = time.process_time()
+        try:
+            text = bench.search(scorer, list(inst.seeds), list(inst.vocab), budget=budget, seed=s)
+            value = float(objective(inst, " ".join(str(text).split())))
+        except Exception as exc:
+            value, text = None, repr(exc)[:300]
+        cpu += time.process_time() - t0
+        out.append({"value": value, "text": str(text)[:300]})
+Path(sys.argv[2]).write_text(json.dumps({"runs": out, "cpu": cpu}))
+"""
+
+
+def _record(values: dict) -> None:
+    try:
+        cur = json.loads(_METRICS.read_text())
+    except (OSError, ValueError):
+        cur = {}
+    cur.update({k: float(v) for k, v in values.items()})
+    _METRICS.write_text(json.dumps(cur, indent=2, sort_keys=True))
+
+
+@functools.lru_cache(maxsize=None)
+def _heldout() -> dict:
+    """{"score", "min_run", "ok", "why"}; computed once per session, failures included."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("_search_heldout_gen_t",
+                                                  Path(__file__).resolve().with_name("heldout_gen.py"))
+    gen = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = gen
+    spec.loader.exec_module(gen)
+    opts = [gen.optimum(gen.make_instance(s)) for s in HELDOUT_SEEDS]
+    res = {"score": 0.0, "min_run": 0.0, "ok": False, "why": ""}
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td) / "result.json"
+        env = dict(os.environ, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1",
+                   PYTHONPATH=str(WS))
+        try:
+            r = subprocess.run([sys.executable, "-c", _HELDOUT_SCRIPT,
+                                str(Path(__file__).resolve().with_name("heldout_gen.py")), str(out),
+                                ",".join(map(str, HELDOUT_SEEDS)), ",".join(map(str, HELDOUT_SEARCH_SEEDS)),
+                                str(HELDOUT_BUDGET)],
+                               cwd=WS, capture_output=True, text=True, timeout=400, env=env)
+        except subprocess.TimeoutExpired:
+            res["why"] = "held-out run exceeded 400s wall clock"
+        else:
+            if r.returncode != 0 or not out.exists():
+                res["why"] = "held-out run failed: " + r.stderr[-1500:]
+            else:
+                got = json.loads(out.read_text())
+                ratios = []
+                k = 0
+                for opt in opts:
+                    for _ in HELDOUT_SEARCH_SEEDS:
+                        v = got["runs"][k]["value"]
+                        ratios.append(0.0 if v is None else max(0.0, v / opt))
+                        k += 1
+                res["score"] = sum(ratios) / len(ratios)
+                res["min_run"] = min(ratios)
+                res["ok"] = float(got["cpu"]) <= HELDOUT_CPU_BUDGET
+                res["why"] = "" if res["ok"] else f"over CPU budget: {float(got['cpu']):.1f}s"
+    _record({"heldout_search_score": round(res["score"], 6), "heldout_search_min_run": round(res["min_run"], 6)})
+    return res
+
+
+def _rung(min_score: float) -> None:
+    h = _heldout()
+    assert h["ok"], h["why"]
+    assert h["score"] >= min_score, f"held-out search score {h['score']:.4f} < {min_score}"
+
+
+def test_heldout_search_ge_0_25():
+    _rung(0.25)
+
+
+def test_heldout_search_ge_0_42():
+    _rung(0.42)
+
+
+def test_heldout_search_ge_0_56():
+    _rung(0.56)
+
+
+def test_heldout_search_ge_0_70():
+    _rung(0.70)
+
+
+def test_heldout_search_ge_0_84():
+    _rung(0.84)
+
+
+def test_heldout_search_ge_0_91():
+    _rung(0.91)
+
+
+def test_heldout_search_ge_0_94():
+    _rung(0.94)
+
+
+def test_heldout_search_ge_0_965():
+    _rung(0.965)

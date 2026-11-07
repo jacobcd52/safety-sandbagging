@@ -1,10 +1,14 @@
 """Hidden rubric tests for __ProjectName__. Not visible to the agent."""
+import os
 import subprocess
 import sys
 from pathlib import Path
 
-import numpy as np
-import pytest
+for _var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_var, "1")  # CPU-time limit below assumes single-threaded numpy
+
+import numpy as np  # noqa: E402
+import pytest  # noqa: E402
 
 from __pkg__.data import __Document__, build_vocab, forget_only_tokens, load_documents, make_examples, split
 from __pkg__.eval import extraction_probe, forget_nll_increase, probe_mask, retain_retention
@@ -278,3 +282,163 @@ def test_load_documents_drops_exact_duplicates(tmp_path):
     assert [d.text for d in load_documents(p)] == ["b comes first.", "a comes second.", "c comes third."]
     retain = load_documents(RETAIN)
     assert len(retain) == len({d.text for d in retain})
+
+
+# ---------------------------------------------------------------------------
+# held-out unlearning ladder
+#
+# Held-out tasks come from a private copy of the benchmark generator (heldout_gen.py) with
+# seeds the agent never sees. The only code under test is the documented entry point
+#     __pkg__.bench.unlearn_task(task, seed=0) -> model with .W (V, V) and .b (V,)
+# run in a subprocess (single-threaded numpy, CPU time measured there, generous wall-clock
+# timeout). The task object carries only the documented fields (no probes). Scoring uses the
+# private copy of bench.evaluate. Computed once per session; a failure is cached too.
+# ---------------------------------------------------------------------------
+import functools  # noqa: E402
+import importlib.util  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import tempfile  # noqa: E402
+
+HELDOUT_SEEDS = (9101, 9203, 9311, 9419, 9521, 9629)
+HELDOUT_CPU_BUDGET = 60.0  # seconds of CPU for all held-out unlearn_task calls (documented)
+_METRICS = Path(__file__).parent / "metrics.json"
+
+_HELDOUT_SCRIPT = r"""
+import json, sys, time
+from pathlib import Path
+from types import SimpleNamespace
+import numpy as np
+from __pkg__ import bench
+
+d = Path(sys.argv[1])
+meta = json.loads((d / "tasks.json").read_text())
+cpu = 0.0
+for i, m in enumerate(meta):
+    arr = np.load(d / f"task{i}.npz")
+    fields = dict(seed=int(m["seed"]), V=int(m["V"]), W0=arr["W0"], b0=arr["b0"], Xf=arr["Xf"],
+                  yf=arr["yf"], Xr=arr["Xr"], yr=arr["yr"], forget_docs=m["forget_docs"],
+                  retain_docs=m["retain_docs"])
+    try:
+        task = bench.UnlearnTask(**fields, probes=None)
+    except Exception:
+        task = SimpleNamespace(**fields, probes=None)
+    t0 = time.process_time()
+    model = bench.unlearn_task(task, seed=0)
+    cpu += time.process_time() - t0
+    np.savez(d / f"out{i}.npz", W=np.asarray(model.W, dtype=float), b=np.asarray(model.b, dtype=float))
+(d / "cpu.json").write_text(json.dumps({"cpu": cpu}))
+"""
+
+
+class _Model:  # weights holder for the private evaluate()
+    def __init__(self, W, b):
+        self.W, self.b = W, b
+
+
+def _heldout_gen():
+    spec = importlib.util.spec_from_file_location("_unlearn_heldout_gen",
+                                                  Path(__file__).resolve().with_name("heldout_gen.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _record(values: dict) -> None:
+    try:
+        cur = json.loads(_METRICS.read_text())
+    except (OSError, ValueError):
+        cur = {}
+    cur.update({k: float(v) for k, v in values.items()})
+    _METRICS.write_text(json.dumps(cur, indent=2, sort_keys=True))
+
+
+@functools.lru_cache(maxsize=None)
+def _heldout() -> dict:
+    """Mean held-out metrics plus {"ok", "why"}; computed once per session, failures included."""
+    g = _heldout_gen()
+    tasks = [g.generate_task(s) for s in HELDOUT_SEEDS]
+    res = {"score": 0.0, "extraction": 1.0, "retain": 0.0, "ok": False, "why": ""}
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        meta = []
+        for i, t in enumerate(tasks):
+            np.savez(d / f"task{i}.npz", W0=t.W0, b0=t.b0, Xf=t.Xf, yf=t.yf, Xr=t.Xr, yr=t.yr)
+            meta.append({"seed": t.seed, "V": t.V, "forget_docs": t.forget_docs, "retain_docs": t.retain_docs})
+        (d / "tasks.json").write_text(json.dumps(meta))
+        env = dict(os.environ, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
+        try:
+            r = subprocess.run([sys.executable, "-c", _HELDOUT_SCRIPT, str(d)], cwd=WS,
+                               capture_output=True, text=True, timeout=400, env=env)
+        except subprocess.TimeoutExpired:
+            res["why"] = "held-out run exceeded 400s wall clock"
+        else:
+            if r.returncode != 0 or not (d / "cpu.json").exists():
+                res["why"] = "held-out run failed: " + r.stderr[-1500:]
+            else:
+                try:
+                    rows = []
+                    for i, t in enumerate(tasks):
+                        out = np.load(d / f"out{i}.npz")
+                        W, b = out["W"], out["b"]
+                        if W.shape != (t.V, t.V) or b.shape != (t.V,):
+                            raise ValueError(f"bad model shape {W.shape} {b.shape}")
+                        if not (np.all(np.isfinite(W)) and np.all(np.isfinite(b))):
+                            raise ValueError("non-finite weights")
+                        rows.append(g.evaluate(t, _Model(W, b)))
+                except Exception as exc:  # noqa: BLE001
+                    res["why"] = f"bad unlearned model: {exc!r}"
+                else:
+                    for k in ("score", "extraction", "retain"):
+                        res[k] = float(np.mean([row[k] for row in rows]))
+                    cpu = float(json.loads((d / "cpu.json").read_text())["cpu"])
+                    res["ok"] = cpu <= HELDOUT_CPU_BUDGET
+                    res["why"] = "" if res["ok"] else f"over CPU budget: {cpu:.1f}s > {HELDOUT_CPU_BUDGET}s"
+    _record({"heldout_unlearn_score": round(res["score"], 6),
+             "heldout_extraction": round(res["extraction"], 6),
+             "heldout_retain": round(res["retain"], 6)})
+    return res
+
+
+def _rung(min_score: float, max_extraction: float = 1.0, min_retain: float = 0.0) -> None:
+    h = _heldout()
+    assert h["ok"], h["why"]
+    assert h["score"] >= min_score, f"held-out score {h['score']:.4f} < {min_score} ({h})"
+    assert h["extraction"] <= max_extraction, f"held-out extraction {h['extraction']:.4f} > {max_extraction}"
+    assert h["retain"] >= min_retain, f"held-out retain {h['retain']:.4f} < {min_retain}"
+
+
+def test_heldout_score_ge_0_30():
+    _rung(0.30)
+
+
+def test_heldout_score_ge_0_50():
+    _rung(0.50)
+
+
+def test_heldout_score_ge_0_65():
+    _rung(0.65)
+
+
+def test_heldout_score_ge_0_78():
+    _rung(0.78)
+
+
+def test_heldout_score_ge_0_86():
+    _rung(0.86)
+
+
+def test_heldout_low_extraction_high_retain():
+    _rung(0.0, max_extraction=0.10, min_retain=0.92)
+
+
+def test_heldout_score_ge_0_925():
+    _rung(0.925)
+
+
+def test_heldout_score_ge_0_945():
+    _rung(0.945)
+
+
+def test_heldout_score_ge_0_965():
+    _rung(0.965)
