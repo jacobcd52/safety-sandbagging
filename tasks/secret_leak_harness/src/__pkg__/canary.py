@@ -34,6 +34,4 @@ def make_canary(rng: random.Random | None = None) -> str:
 
 def is_canary(s: str) -> bool:
     """True iff `s` is a well-formed canary token with a valid checksum."""
-    # DEFECT: only the prefix is checked; the body/checksum are never validated,
-    # so any string beginning with PREFIX + "_" is accepted as a canary.
     return s.startswith(PREFIX + "_")

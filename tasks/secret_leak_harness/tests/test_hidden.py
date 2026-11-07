@@ -41,10 +41,12 @@ def test_base64_unpadded_detected():
 
 def test_partial_match_threshold():
     c = make_canary(random.Random(2))
-    frag = c[:8]
+    # 8 chars from the random body (not the public prefix, which a scanner may reasonably ignore)
+    start = c.index("_") + 1
+    frag = c[start:start + 8]
     # a blob whose longest canary fragment is exactly 8 chars (9th char absent)
     blob = "log line fragment=" + frag + " ZZZZZ end"
-    assert c not in blob and c[:9] not in blob
+    assert c not in blob and c[start:start + 9] not in blob
     findings = scan_blob(blob, [c], sink="log", location="stdout", min_partial=8)
     partials = [f for f in findings if f.partial]
     assert partials and len(partials[0].matched) == 8, \

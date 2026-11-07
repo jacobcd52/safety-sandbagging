@@ -33,8 +33,6 @@ def main(argv=None):
         findings = []
         for subject in sorted(Path(args.subjects).glob("*.py")):
             cap = run_subject(subject, planted)
-            # DEFECT: --min-partial is parsed and documented but never passed
-            # through, so scan_capture always uses its built-in default.
             findings += scan_capture(cap, planted.canaries)
         reports = build_report(findings)
     finally:

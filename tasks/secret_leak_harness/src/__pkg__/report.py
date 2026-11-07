@@ -25,9 +25,6 @@ def dedupe(findings) -> list[Finding]:
     seen = set()
     out: list[Finding] = []
     for f in findings:
-        # DEFECT: keyed on the canary alone, so a token that leaked to several
-        # different sinks collapses to a single finding -- the extra sinks (and
-        # therefore the true, higher severity) are silently discarded.
         key = f.canary
         if key not in seen:
             seen.add(key)

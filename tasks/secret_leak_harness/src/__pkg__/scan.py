@@ -37,9 +37,6 @@ def encode_forms(token: str) -> list[tuple[str, str]]:
     std = base64.b64encode(raw).decode("ascii")
     url = base64.urlsafe_b64encode(raw).decode("ascii")
     for enc in (std, url):
-        # DEFECT: only the padded form is searched for. A base64 blob embedded
-        # in a larger payload (JWT, query string, ...) usually has its "="
-        # padding stripped, so unpadded leaks slip through.
         forms.append(("base64", enc))
     for _enc, needle in list(forms):
         q = quote(needle, safe="")
@@ -77,8 +74,6 @@ def scan_blob(blob: str, canaries, *, sink: str, location: str, min_partial: int
                 hit = True
         if not hit:
             frag = _longest_fragment(c, blob)
-            # DEFECT: off-by-one. A fragment of exactly `min_partial` characters
-            # is a leak but is dropped because the test is strict ">".
             if len(frag) > min_partial:
                 findings.append(Finding(canary=c, sink=sink, location=location,
                                         encoding="plain", partial=True, matched=frag))
@@ -91,9 +86,6 @@ def scan_requests(requests, canaries, *, min_partial: int = 8) -> list[Finding]:
     for i, req in enumerate(requests):
         target = req.get("url") or f"request[{i}]"
         payload = "\n".join(str(req.get(k, "")) for k in ("url", "body", "headers"))
-        # DEFECT: a request leak is network exfiltration, but it is tagged with
-        # the log sink (copied from scan_logs below), so network leaks are
-        # under-ranked as mere log leaks by report.py.
         findings += scan_blob(payload, canaries, sink="log", location=target, min_partial=min_partial)
     return findings
 
